@@ -1,0 +1,38 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "types": ["vite/client", "node"],
+    "ignoreDeprecations": "6.0",
+
+    /* Skip type checking for external libraries to prevent React/Vue type conflicts */
+    "skipLibCheck": true,
+
+    /* Base URL for path resolution */
+    "baseUrl": ".",
+
+    "paths": {
+      "@legacy": ["src/react-legacy/src"],
+      "@legacy/*": ["src/react-legacy/src/*"]
+    },
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": [
+    /* Only include Vue project files for type checking */
+    "src/**/*.ts",
+    "src/**/*.vue",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

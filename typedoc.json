@@ -1,0 +1,63 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "MediaSFU Vue",
+  "entryPoints": [
+    "src/docs.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "groupOrder": ["Components", "Composables", "Types", "Utils", "Methods"],
+  "kindSortOrder": ["Class", "Function", "Interface", "TypeAlias", "Variable"],
+    "packageOptions": {
+    "entryPoints": ["src/docs.ts"],
+    "groupOrder":  ["Components", "Composables", "Types", "Utils", "Methods"],
+    "kindSortOrder": ["Function", "Interface", "TypeAlias"],
+    "readme": "none"
+  },
+  "exclude": [
+    "**/*.vue",
+    "**/App*.vue",
+    "**/main.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/node_modules/**",
+    "**/react-legacy/**"
+  ],
+  "out": "docs",
+  "skipErrorChecking": true,
+  "sidebarLinks": {
+    "MediaSFU": "https://mediasfu.com"
+  },
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "typescript",
+    "tsx",
+    "jsx",
+    "vue"
+  ],
+  "theme": "default",
+  "plugin": ["typedoc-plugin-extras"],
+  "logLevel": "Error",
+  "hostedBaseUrl": "https://mediasfu.com/vue",
+  "useHostedBaseUrlForAbsoluteLinks": false,
+  "customFooterHtml": "&copy; 2025 <strong>MediaSFU</strong>",
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true,
+    "includeFolders": true
+  },
+  "categorizeByGroup": true,
+  "hideGenerator": true,
+  "sort": ["source-order", "kind", "alphabetical"],
+  "customTitle": "MediaSFU Vue",
+  "customDescription": "MediaSFU Vue SDK - Full-featured WebRTC SDK for Vue 3",
+  "readme": "none",
+  "includeVersion": true,
+  "favicon": "assets/images/favicon.ico"
+}

@@ -1,0 +1,21 @@
+
+  .mediasfu-cohost-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .mediasfu-cohost-modal .modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: black;
+  }
+  
+  .mediasfu-cohost-modal .btn-close {
+    padding: 5px;
+    cursor: pointer;
+  }
+  
+  /* Add more styles for modal body, footer, buttons, etc. */
+  

@@ -1,0 +1,337 @@
+#screenboard-interface .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  min-height: 36px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  font-weight: 500;
+  color: #212529;
+  background-color: #f8f9fa;
+  border: 1px solid rgba(33, 37, 41, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+#screenboard-interface .btn:hover {
+  background-color: #e2e6ea;
+  border-color: rgba(33, 37, 41, 0.35);
+}
+
+#screenboard-interface .btn:active {
+  background-color: #d3d9df;
+  border-color: rgba(33, 37, 41, 0.5);
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+}
+
+#screenboard-interface .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+#screenboard-interface .btn-primary {
+  color: #fff;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+#screenboard-interface .btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+#screenboard-interface .btn-secondary {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+#screenboard-interface .btn-secondary:hover {
+  background-color: #5c636a;
+  border-color: #565e64;
+}
+
+#screenboard-interface .btn-dark {
+  color: #fff;
+  background-color: #212529;
+  border-color: #212529;
+}
+
+#screenboard-interface .btn-dark:hover {
+  background-color: #1c1f23;
+  border-color: #16181b;
+}
+
+#screenboard-interface .btn-danger {
+  color: #fff;
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+#screenboard-interface .btn-danger:hover {
+  background-color: #bb2d3b;
+  border-color: #b02a37;
+}
+
+#screenboard-interface .btn-success {
+  color: #fff;
+  background-color: #198754;
+  border-color: #198754;
+}
+
+#screenboard-interface .btn-success:hover {
+  background-color: #157347;
+  border-color: #146c43;
+}
+
+#screenboard-interface .btnBoardScreen {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 6px;
+}
+
+#screenboard-interface .btn-group {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+}
+
+#screenboard-interface .btn-group .btn + .btn {
+  margin-left: 2px;
+}
+
+#screenboard-interface .dropdown-toggle::after {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 0.255em;
+  vertical-align: 0.255em;
+  content: "";
+  border-top: 0.3em solid currentColor;
+  border-right: 0.3em solid transparent;
+  border-bottom: 0;
+  border-left: 0.3em solid transparent;
+}
+
+#screenboard-interface .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1050;
+  display: none;
+  min-width: 11rem;
+  padding: 0.5rem 0;
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #212529;
+  text-align: left;
+  background-color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.25rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175);
+}
+
+#screenboard-interface .dropdown-menu.show {
+  display: block;
+}
+
+#screenboard-interface .dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 1rem;
+  clear: both;
+  font-weight: 400;
+  color: #212529;
+  text-align: inherit;
+  white-space: nowrap;
+  background-color: transparent;
+  border: 0;
+}
+
+#screenboard-interface .dropdown-item:hover,
+#screenboard-interface .dropdown-item:focus {
+  background-color: #f8f9fa;
+  color: #16181b;
+}
+
+#screenboard-interface .toolbarScreen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+#screenboard-interface .toolbarScreen .btn-group {
+  margin-right: 2px;
+}
+
+#screenboard-interface .toolbarScreen .btn-group:last-of-type {
+  margin-right: 0;
+}
+
+#screenboard-interface #screenboardContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#screenboard-interface canvas {
+  margin: auto;
+}
+
+#screenboard-interface #whiteboardCanvas {
+  border: 1px solid #000;
+  cursor: crosshair;
+  background-color: white;
+}
+
+#screenboard-interface .resize-handle,
+#screenboard-interface .move-handle {
+  width: 8px;
+  height: 8px;
+  background: red;
+  position: absolute;
+}
+
+#screenboard-interface .move-handle {
+  background: blue;
+}
+
+#screenboard-interface #textInput {
+  display: none;
+  position: absolute;
+  z-index: 10;
+  width: 200px;
+}
+
+#screenboard-interface .shape-icon {
+  width: 20px;
+  height: 20px;
+  color: white;
+}
+
+#screenboard-interface .toolbar .btn-group button,
+#screenboard-interface .toolbar .dropdown-menu a {
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  margin: 0 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+#screenboard-interface .toolbar .dropdown-menu a {
+  background-color: transparent;
+  color: rgb(27, 26, 26);
+}
+
+#screenboard-interface .toolbar .btn-group button:hover,
+#screenboard-interface .toolbar .dropdown-menu a:hover {
+  background-color: #e3e7eb;
+}
+
+#screenboard-interface .toolbar .btn-group button.active {
+  background-color: #454d55;
+}
+
+#screenboard-interface .toolbarScreen .btn-group button,
+#screenboard-interface .toolbarScreen .dropdown-menu a {
+  font-size: 0.8rem;
+  padding: 5px 10px;
+  margin: 1px 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  background-color: transparent;
+  color: "black";
+}
+
+#screenboard-interface .toolbarScreen .btn-group button {
+  color: rgb(6, 6, 6);
+  border: none;
+}
+
+#screenboard-interface .toolbarScreen .dropdown-menu a {
+  background-color: transparent;
+  color: rgb(27, 26, 26);
+}
+
+/* #screenboard-interface .toolbarScreen .btn-group button:hover,
+#screenboard-interface .toolbarScreen .dropdown-menu a:hover {
+  background-color: rgba(214, 209, 209, 0.4);
+  color: black;
+} */
+
+#screenboard-interface .toolbarScreen .btn-group button.active {
+  background-color: #454d55;
+}
+
+#screenboard-interface #toolbar,
+#screenboard-interface #toolbarScreen {
+  transition: display 0.3s ease-in-out;
+}
+
+#screenboard-interface #toolbarToggle,
+#screenboard-interface #toolbarToggleScreen {
+  cursor: pointer;
+  border: "2px solid black" !important;
+  font-size: 0.8rem;
+}
+
+#screenboard-interface #colorPicker,
+#screenboard-interface #colorPickerScreen {
+  font-size: 0.8rem;
+  padding: 2px 2px;
+  width: 32px;
+  height: 32px;
+}
+
+#screenboard-interface #lineTypePicker {
+  font-size: 0.8rem;
+  padding: 2px auto;
+  width: 32px;
+  height: 32px;
+}
+
+#screenboard-interface .btnBoard {
+  font-size: 1rem;
+  padding: 2px 2px;
+  width: 40px;
+  height: 40px;
+  margin: 2px;
+}
+
+#screenboard-interface #lineTypePickerScreen {
+  font-size: 0.7rem;
+  padding: 2px auto;
+  width: 28px;
+  height: 28px;
+  background-color: rgba(214, 209, 209, 0.4);
+  color: #000;
+  border-radius: 4px;
+}
+
+#screenboard-interface .toggle-icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+}
+
+#screenboard-interface #toggleBackground.active {
+  background-color: #fdfeff;
+}
+
+#screenboard-interface .annotateScreenBtn {
+  background-color: #2d2e2f !important;
+  border: 2px solid #000 !important;
+  color: green !important;
+  font-size: 0.75rem;
+}
