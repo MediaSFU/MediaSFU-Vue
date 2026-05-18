@@ -163,24 +163,44 @@ const props = withDefaults(defineProps<SubAspectComponentProps>(), {
 
 const slots = useSlots();
 
-const subAspectFraction = !props.showControls ? 0 : props.defaultFractionSub;
+const isBrowser = typeof window !== 'undefined';
 
-const aspectStyles = ref<CSSProperties>({
-  height: props.showControls ? '40px' : '0px',
-  width: props.containerWidthFraction
-    ? `${props.containerWidthFraction * window.innerWidth}px`
-    : `${window.innerWidth}px`,
-});
+const computeDimensions = (): CSSProperties => {
+  if (!isBrowser) {
+    return {
+      width: '0px',
+      height: props.showControls ? '40px' : '0px',
+    };
+  }
+
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  const width = props.containerWidthFraction
+    ? props.containerWidthFraction * windowWidth
+    : windowWidth;
+
+  let height = 0;
+
+  if (props.showControls) {
+    if (typeof props.containerHeightFraction === 'number') {
+      height = props.containerHeightFraction * windowHeight;
+    } else if (props.defaultFractionSub > 0) {
+      height = props.defaultFractionSub * windowHeight;
+    } else {
+      height = 40;
+    }
+  }
+
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+  };
+};
+
+const aspectStyles = ref<CSSProperties>(computeDimensions());
 
 const updateAspectStyles = () => {
-  const windowWidth = window.innerWidth;
-
-  aspectStyles.value = {
-    height: props.showControls ? '40px' : '0px',
-    width: props.containerWidthFraction
-      ? `${props.containerWidthFraction * windowWidth}px`
-      : `${windowWidth}px`,
-  };
+  aspectStyles.value = computeDimensions();
 };
 
 // Watch for prop changes
@@ -189,7 +209,7 @@ watch(
     () => props.showControls,
     () => props.containerHeightFraction,
     () => props.containerWidthFraction,
-    () => subAspectFraction,
+    () => props.defaultFractionSub,
   ],
   () => {
     updateAspectStyles();
@@ -198,11 +218,17 @@ watch(
 
 onMounted(() => {
   updateAspectStyles();
+  if (!isBrowser) {
+    return;
+  }
   window.addEventListener('resize', updateAspectStyles);
   window.addEventListener('orientationchange', updateAspectStyles);
 });
 
 onUnmounted(() => {
+  if (!isBrowser) {
+    return;
+  }
   window.removeEventListener('resize', updateAspectStyles);
   window.removeEventListener('orientationchange', updateAspectStyles);
 });

@@ -10,6 +10,11 @@ export * from './types/renderable-component';
 
 // Utilities - Room creation and joining helpers
 export * from './utils/mediasfuRooms';
+export * from './utils/translationLanguages';
+
+// Services - Socket receive helpers and framework-level integrations
+export * from './services/translationReceiveMethods';
+export * from './services/liveSubtitleService';
 
 // Consumers - Media and streaming functions
 export * from './consumers/addVideosGrid';
@@ -41,6 +46,9 @@ export * from './components/screenboardComponents';
 // BackgroundModal (no index.ts in folder)
 export { default as BackgroundModal } from './components/backgroundComponents/BackgroundModal.vue';
 
+// Modern UI entry components
+export * from './modern/mediasfu_components';
+
 // ============================================================================
 // Vue Composables (Hooks)
 // ============================================================================
@@ -51,7 +59,9 @@ export * from './composables/exitComposables';
 export * from './composables/mediaSettingsComposables';
 export * from './composables/messageComposables';
 export * from './composables/participantsComposables';
+export * from './composables/panelistsComposables';
 export * from './composables/pollsComposables';
+export * from './composables/permissionsComposables';
 export * from './composables/recordingComposables';
 export * from './composables/requestsComposables';
 export * from './composables/settingsComposables';

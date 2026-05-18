@@ -1,0 +1,62 @@
+export const mediasfuModernTokens = {
+  colors: {
+    pageBackground: '#081120',
+    pageBackgroundAccent: '#0f1b33',
+    panelSurface: 'rgba(10, 18, 33, 0.82)',
+    panelSurfaceElevated: 'rgba(15, 27, 49, 0.9)',
+    panelBorder: 'rgba(148, 163, 184, 0.18)',
+    panelBorderStrong: 'rgba(96, 165, 250, 0.32)',
+    textPrimary: '#f8fafc',
+    textSecondary: 'rgba(226, 232, 240, 0.78)',
+    textMuted: 'rgba(148, 163, 184, 0.82)',
+    brandPrimary: '#6366f1',
+    brandSecondary: '#3b82f6',
+    accent: '#06b6d4',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#f43f5e',
+    fieldBackground: 'rgba(15, 23, 42, 0.74)',
+    fieldBorder: 'rgba(148, 163, 184, 0.26)',
+    fieldBorderFocus: 'rgba(96, 165, 250, 0.72)',
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px',
+    md: '16px',
+    lg: '24px',
+    xl: '32px',
+    xxl: '48px',
+  },
+  radius: {
+    sm: '10px',
+    md: '16px',
+    lg: '24px',
+    pill: '999px',
+  },
+  shadow: {
+    soft: '0 16px 40px rgba(2, 8, 23, 0.22)',
+    elevated: '0 24px 60px rgba(2, 8, 23, 0.3)',
+    focus: '0 0 0 3px rgba(96, 165, 250, 0.24)',
+  },
+  typography: {
+    fontFamily: "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    headlineLg: 'clamp(2.35rem, 4vw, 3.6rem)',
+    headlineMd: 'clamp(1.5rem, 2vw, 2.2rem)',
+    title: '1.125rem',
+    body: '0.95rem',
+    caption: '0.8rem',
+    label: '0.75rem',
+  },
+  motion: {
+    fast: '160ms',
+    base: '220ms',
+    slow: '320ms',
+    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  },
+  layout: {
+    contentMaxWidth: '1180px',
+    onboardingCardMaxWidth: '520px',
+  },
+} as const;
+
+export type MediasfuModernTokens = typeof mediasfuModernTokens;

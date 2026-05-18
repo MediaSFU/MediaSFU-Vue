@@ -14,11 +14,7 @@
     "allowImportingTsExtensions": true,
 
     /* Base URL for path resolution */
-    "baseUrl": ".",
-    "paths": {
-      "@legacy": ["src/react-legacy/src"],
-      "@legacy/*": ["src/react-legacy/src/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src/index.ts"

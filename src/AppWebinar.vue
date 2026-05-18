@@ -68,14 +68,14 @@ const connectMediaSFU = localLink.trim() !== '';
 */
 
 // Scenario C: Using MediaSFU Cloud without your own server.
-// - For development, use your actual or dummy credentials.
-// - In production, securely handle credentials server-side and use custom room functions.
+// - For local development, use Vite env variables from .env.example.
+// - In production, keep real credentials server-side and use custom room functions.
 const credentials = {
-  apiUserName: 'yourDevUser', // 8 chars recommended for dummy
-  apiKey: 'yourDevApiKey1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', // 64 chars
+  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
+  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
 }
-const localLink = '' // Leave empty if not using your own server
-const connectMediaSFU = true // Set to true if using MediaSFU Cloud since localLink is empty
+const localLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK ?? ''
+const connectMediaSFU = localLink.trim() !== '' || (credentials.apiUserName.trim() !== '' && credentials.apiKey.trim() !== '')
 
 // =========================================================
 //                    UI RENDERING OPTIONS

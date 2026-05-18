@@ -220,6 +220,33 @@
           <div
             style="height: 1px; background-color: #ffffff; margin-top: 2px; margin-bottom: 2px"
           />
+          <div
+            style="
+              display: flex;
+              flex-direction: row;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 10px;
+            "
+          >
+            <label style="font-size: medium; color: black; font-weight: bold">
+              Show Subtitles on Cards
+            </label>
+            <button @click="showSubtitlesOnCardsState = !showSubtitlesOnCardsState">
+              <span
+                :style="{
+                  fontSize: 'large',
+                  color: showSubtitlesOnCardsState ? 'green' : 'red',
+                  fontWeight: 'bolder'
+                }"
+              >
+                &#10003;
+              </span>
+            </button>
+          </div>
+          <div
+            style="height: 1px; background-color: #ffffff; margin-top: 2px; margin-bottom: 2px"
+          />
         </div>
       </div>
       <div style="margin-top: 10px; flex-direction: row; justify-content: flex-end">
@@ -283,6 +310,7 @@ if (modalWidth > 350) {
 const meetingDisplayTypeState = ref(props.parameters.meetingDisplayType)
 const autoWaveState = ref(props.parameters.autoWave)
 const forceFullDisplayState = ref(props.parameters.forceFullDisplay)
+const showSubtitlesOnCardsState = ref(props.parameters.showSubtitlesOnCards ?? true)
 const meetingVideoOptimizedState = ref(props.parameters.meetingVideoOptimized)
 
 const modalContainerStyle = computed((): CSSProperties => ({
@@ -317,6 +345,7 @@ const handleSaveSettings = async () => {
       meetingDisplayType: meetingDisplayTypeState.value,
       autoWave: autoWaveState.value,
       forceFullDisplay: forceFullDisplayState.value,
+      showSubtitlesOnCards: showSubtitlesOnCardsState.value,
       meetingVideoOptimized: meetingVideoOptimizedState.value
     }
   })

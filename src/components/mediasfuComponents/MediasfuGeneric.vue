@@ -160,12 +160,13 @@
       <!-- Main aspect component contains all but the control buttons -->
       <component
         :is="MainAspect"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :default-fraction="1 - controlHeight"
         :update-is-wide-screen="updateIsWideScreen"
         :update-is-medium-screen="updateIsMediumScreen"
         :update-is-small-screen="updateIsSmallScreen"
         :show-controls="eventType === 'webinar' || eventType === 'conference'"
+        :container-props="mainAspectContainerProps"
       >
         <!-- MainScreenComponent contains the main grid view and the minor grid view -->
         <component
@@ -176,18 +177,21 @@
           :default-fraction="1 - controlHeight"
           :component-sizes="componentSizes"
           :show-controls="eventType === 'webinar' || eventType === 'conference'"
+          :container-width-fraction="mainScreenWidthFraction"
         >
           <!-- MainGridComponent shows the main grid view -->
           <component
             :is="MainGrid"
             :height="componentSizes.mainHeight"
             :width="componentSizes.mainWidth"
-            background-color="rgba(217, 227, 234, 0.99)"
+            :background-color="roomSurfaceBackgroundColor"
             :main-size="mainHeightWidth"
             :show-aspect="mainHeightWidth > 0"
             :time-background-color="recordState"
             :meeting-progress-time="meetingProgressTime"
+            :timer-component="MeetingProgressTimerComponent"
             :stack-direction="isWideScreen ? 'row' : 'column'"
+            :is-dark-mode="modernMenuDarkMode"
           >
             <component
               :is="FlexibleVideoComponent"
@@ -197,6 +201,8 @@
               :columns="1"
               :components-to-render="mainGridStream"
               :show-aspect="mainGridStream.length > 0 && !(whiteboardStarted && !whiteboardEnded)"
+              :background-color="roomSurfaceBackgroundColor"
+              :is-dark-mode="modernMenuDarkMode"
               :local-stream-screen="localStreamScreen"
               :annotate-screen-stream="annotateScreenStream"
             >
@@ -234,7 +240,7 @@
               :is="ControlButtonsTouch"
               :buttons="recordButton"
               direction="horizontal"
-              :show-aspect="eventType === 'broadcast' && !showRecordButtons && islevel === '2'"
+              :show-aspect="eventType === 'broadcast' && !showRecordButtons && canUseBroadcastMediaControls"
               location="bottom"
               position="middle"
             />
@@ -244,9 +250,16 @@
               :is="ControlButtonsTouch"
               :buttons="recordButtons"
               direction="horizontal"
-              :show-aspect="eventType === 'broadcast' && showRecordButtons && islevel === '2'"
+              :show-aspect="eventType === 'broadcast' && showRecordButtons && canUseBroadcastMediaControls"
               location="bottom"
               position="middle"
+            />
+
+            <ModernParticipantsCounterBadge
+              :participants-count="participantsCounter"
+              position="bottomLeft"
+              :show-badge="mainHeightWidth > 0"
+              :is-dark-mode="modernMenuDarkMode"
             />
           </component>
 
@@ -255,12 +268,14 @@
             :is="OtherGrid"
             :height="componentSizes.otherHeight"
             :width="componentSizes.otherWidth"
-            background-color="rgba(217, 227, 234, 0.99)"
+            :background-color="roomSurfaceBackgroundColor"
             :show-aspect="mainHeightWidth !== 100"
             :time-background-color="recordState"
             :show-timer="mainHeightWidth === 0"
             :meeting-progress-time="meetingProgressTime"
+            :timer-component="MeetingProgressTimerComponent"
             :stack-direction="isWideScreen ? 'row' : 'column'"
+            :is-dark-mode="modernMenuDarkMode"
           >
             <!-- Pagination -->
             <div
@@ -282,6 +297,7 @@
                 :show-aspect="doPaginate"
                 :pagination-height="paginationHeightWidth"
                 :direction="paginationDirection"
+                :is-dark-mode="modernMenuDarkMode"
                 :parameters="allParameters"
               />
             </div>
@@ -289,8 +305,27 @@
             <!-- AudioGrid contains all the audio only streams -->
             <component
               :is="AudioGridComponent"
-              :components-to-render="audioOnlyComponents"
+              :components-to-render="renderedAudioComponents"
             />
+
+            <div
+              v-if="translationAudioComponents.length > 0"
+              :style="{
+                position: 'absolute',
+                width: '0px',
+                height: '0px',
+                overflow: 'hidden',
+                pointerEvents: 'none',
+              }"
+              aria-hidden="true"
+            >
+              <component
+                :is="descriptor.component"
+                v-for="descriptor in translationAudioComponents"
+                :key="descriptor.key"
+                v-bind="descriptor.props"
+              />
+            </div>
 
             <component
               :is="ControlButtonsTouch"
@@ -308,7 +343,8 @@
               :rows="gridRows"
               :columns="gridCols"
               :components-to-render="otherGridComponentLists[0]"
-              background-color="rgba(217, 227, 234, 0.99)"
+              :background-color="roomSurfaceBackgroundColor"
+              :is-dark-mode="modernMenuDarkMode"
             />
 
             <component
@@ -318,23 +354,121 @@
               :rows="altGridRows"
               :columns="altGridCols"
               :components-to-render="otherGridComponentLists[1]"
-              background-color="rgba(217, 227, 234, 0.99)"
+              :background-color="roomSurfaceBackgroundColor"
+              :is-dark-mode="modernMenuDarkMode"
+            />
+
+            <ModernParticipantsCounterBadge
+              :participants-count="participantsCounter"
+              position="topRight"
+              :show-badge="mainHeightWidth === 0"
+              :is-dark-mode="modernMenuDarkMode"
             />
           </component>
         </component>
+
+        <div
+          v-if="shouldUseSidebar"
+          class="mediasfu-modern-sidebar-shell"
+          :style="{
+            width: isSidebarVisible ? sidebarWidth + 'px' : '0px',
+          }"
+        >
+          <div
+            v-show="isSidebarVisible"
+            class="mediasfu-modern-sidebar-panel"
+            :style="[{ width: sidebarWidth + 'px' }, sidebarThemeVars]"
+          >
+            <div
+              v-if="sidebarNavigationStack.length > 0"
+              class="mediasfu-modern-sidebar-backbar"
+            >
+              <button
+                type="button"
+                class="mediasfu-modern-sidebar-back"
+                @click="sidebarNavigateBack"
+              >
+                <span
+                  class="mediasfu-modern-sidebar-back-icon"
+                  aria-hidden="true"
+                >
+                  ←
+                </span>
+                Back to Menu
+              </button>
+              <button
+                type="button"
+                class="mediasfu-modern-sidebar-close"
+                aria-label="Close sidebar"
+                @click="closeSidebar"
+              >
+                &times;
+              </button>
+            </div>
+            <div class="mediasfu-modern-sidebar-content">
+              <SidebarContentRenderer />
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="validated && !shouldUseSidebar && isSidebarModalVisible"
+          class="mediasfu-modern-sidebar-modal-shell"
+        >
+          <div
+            class="mediasfu-modern-sidebar-modal-panel"
+            :style="[{ width: mobileSidebarWidth + 'px' }, sidebarThemeVars]"
+          >
+            <div
+              v-if="sidebarNavigationStack.length > 0"
+              class="mediasfu-modern-sidebar-backbar"
+            >
+              <button
+                type="button"
+                class="mediasfu-modern-sidebar-back"
+                @click="sidebarNavigateBack"
+              >
+                <span
+                  class="mediasfu-modern-sidebar-back-icon"
+                  aria-hidden="true"
+                >
+                  ←
+                </span>
+                Back to Menu
+              </button>
+              <button
+                type="button"
+                class="mediasfu-modern-sidebar-close"
+                aria-label="Close sidebar"
+                @click="closeSidebar"
+              >
+                &times;
+              </button>
+            </div>
+            <div class="mediasfu-modern-sidebar-content">
+              <SidebarContentRenderer />
+            </div>
+          </div>
+        </div>
       </component>
 
       <!-- SubAspectComponent is used for webinar and conference events only to display fixed control buttons -->
       <component
         :is="SubAspect"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :show-controls="eventType === 'webinar' || eventType === 'conference'"
+        :container-width-fraction="1"
         :default-fraction-sub="controlHeight"
+        :container-props="{
+          style: {
+            left: '0px',
+          },
+        }"
       >
         <component
           :is="ControlButtons"
           :buttons="controlButtons"
-          button-color="black"
+          :button-color="bottomControlButtonColor"
           :button-background-color="{ default: 'transparent', pressed: 'transparent' }"
           alignment="space-between"
           :vertical="false"
@@ -354,6 +488,8 @@
         background-color="rgba(181, 233, 229, 0.97)"
         :is-visible="isMenuModalVisible"
         :on-close="() => updateIsMenuModalVisible(false)"
+        :is-dark-mode="modernMenuDarkMode"
+        :on-toggle-theme="updateModernMenuDarkMode"
         :custom-buttons="customMenuButtons"
         :room-name="roomName"
         :admin-passcode="adminPasscode"
@@ -364,7 +500,7 @@
 
       <component
         :is="EventSettingsModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-event-settings-modal-visible="isSettingsModalVisible"
         :update-is-settings-modal-visible="updateIsSettingsModalVisible"
         :on-event-settings-close="() => updateIsSettingsModalVisible(false)"
@@ -382,7 +518,7 @@
 
       <component
         :is="RequestsModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-requests-modal-visible="isRequestsModalVisible"
         :on-request-close="() => updateIsRequestsModalVisible(false)"
         :request-counter="requestCounter"
@@ -401,7 +537,7 @@
 
       <component
         :is="WaitingRoomModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-waiting-modal-visible="isWaitingModalVisible"
         :on-waiting-room-close="() => updateIsWaitingModalVisible(false)"
         :waiting-room-counter="waitingRoomCounter"
@@ -418,7 +554,7 @@
 
       <component
         :is="CoHostModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-co-host-modal-visible="isCoHostModalVisible"
         :update-is-co-host-modal-visible="updateIsCoHostModalVisible"
         :on-co-host-close="() => updateIsCoHostModalVisible(false)"
@@ -434,7 +570,7 @@
 
       <component
         :is="MediaSettingsModalComponent"
-        background-color="rgba(181, 233, 229, 0.97)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-media-settings-modal-visible="isMediaSettingsModalVisible"
         :on-media-settings-close="() => updateIsMediaSettingsModalVisible(false)"
         :parameters="allParameters"
@@ -473,8 +609,32 @@
       />
 
       <component
+        :is="PanelistsModalComponent"
+        :background-color="roomSurfaceBackgroundColor"
+        :is-panelists-modal-visible="isPanelistsModalVisible"
+        :on-panelists-close="() => updateIsPanelistsModalVisible(false)"
+        :parameters="allParameters"
+      />
+
+      <component
+        :is="PermissionsModalComponent"
+        :background-color="roomSurfaceBackgroundColor"
+        :is-permissions-modal-visible="isPermissionsModalVisible"
+        :on-permissions-close="() => updateIsPermissionsModalVisible(false)"
+        :parameters="allParameters"
+      />
+
+      <component
+        :is="TranslationSettingsModalComponent"
+        :background-color="roomSurfaceBackgroundColor"
+        :is-translation-settings-modal-visible="isTranslationSettingsModalVisible"
+        :on-translation-settings-close="() => updateIsTranslationSettingsModalVisible(false)"
+        :parameters="allParameters"
+      />
+
+      <component
         :is="DisplaySettingsModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-display-settings-modal-visible="isDisplaySettingsModalVisible"
         :on-display-settings-close="() => updateIsDisplaySettingsModalVisible(false)"
         :parameters="allParameters"
@@ -482,7 +642,7 @@
 
       <component
         :is="RecordingModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-recording-modal-visible="isRecordingModalVisible"
         :on-close="() => updateIsRecordingModalVisible(false)"
         :start-recording="startRecording"
@@ -570,7 +730,7 @@
 
       <component
         :is="BreakoutRoomsModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-visible="isBreakoutRoomsModalVisible"
         :on-breakout-rooms-close="() => updateIsBreakoutRoomsModalVisible(false)"
         :parameters="allParameters"
@@ -578,7 +738,7 @@
 
       <component
         :is="ConfigureWhiteboardModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-visible="isConfigureWhiteboardModalVisible"
         :on-configure-whiteboard-close="() => updateIsConfigureWhiteboardModalVisible(false)"
         :parameters="allParameters"
@@ -606,6 +766,8 @@
       <component
         :is="LoadingModalComponent"
         :is-visible="isLoadingModalVisible"
+        loading-text="Loading..."
+        :show-spinner="true"
         background-color="rgba(217, 227, 234, 0.99)"
         display-color="black"
       />
@@ -614,7 +776,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, h, markRaw, type Component, type ComputedRef } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, h, defineComponent, markRaw, type Component, type ComputedRef, type CSSProperties, type HTMLAttributes, type VNodeChild } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
   faMicrophoneSlash,
@@ -625,8 +787,11 @@ import {
   faBars,
   faComments,
   faShareAlt,
+  faCompress,
+  faExpand,
+  faMoon,
+  faSun,
   faSync,
-  faChartBar,
   faRecordVinyl,
   faCog,
   faClock,
@@ -640,12 +805,15 @@ import {
   faMicrophone,
   faPoll,
   faUserFriends,
+  faUserShield,
+  faUserTie,
+  faGlobe,
   faChalkboardTeacher,
   faBan,
   } from '@fortawesome/free-solid-svg-icons';
 
 // Initial values
-import { initialValuesState } from '@legacy/methods/utils/initialValuesState';
+import { initialValuesState } from '../../methods/utils/initialValuesState';
 
 // Import components
 import MainAspectComponent from '../displayComponents/MainAspectComponent.vue';
@@ -656,6 +824,7 @@ import ControlButtonsComponentTouch from '../displayComponents/ControlButtonsCom
 import OthergridComponent from '../displayComponents/OtherGridComponent.vue';
 import MainScreenComponent from '../displayComponents/MainScreenComponent.vue';
 import MainGridComponent from '../displayComponents/MainGridComponent.vue';
+import MeetingProgressTimer from '../displayComponents/MeetingProgressTimer.vue';
 import SubAspectComponent from '../displayComponents/SubAspectComponent.vue';
 import MainContainerComponent from '../displayComponents/MainContainerComponent.vue';
 import AlertComponent from '../displayComponents/AlertComponent.vue';
@@ -666,7 +835,10 @@ import WaitingRoomModal from '../waitingComponents/WaitingModal.vue';
 import DisplaySettingsModal from '../displaySettingsComponents/DisplaySettingsModal.vue';
 import EventSettingsModal from '../eventSettingsComponents/EventSettingsModal.vue';
 import CoHostModal from '../coHostComponents/CoHostModal.vue';
+import PermissionsModal from '../permissionsComponents/PermissionsModal.vue';
 import ParticipantsModal from '../participantsComponents/ParticipantsModal.vue';
+import PanelistsModal from '../panelistsComponents/PanelistsModal.vue';
+import TranslationSettingsModal from '../translationComponents/TranslationSettingsModal.vue';
 import MessagesModal from '../messageComponents/MessagesModal.vue';
 import MediaSettingsModal from '../mediaSettingsComponents/MediaSettingsModal.vue';
 import ConfirmExitModal from '../exitComponents/ConfirmExitModal.vue';
@@ -691,11 +863,28 @@ import MiniCard from '../displayComponents/MiniCard.vue';
 import MiniCardAudio from '../displayComponents/MiniCardAudio.vue';
 import MiniAudio from '../displayComponents/MiniAudio.vue';
 import MiniAudioPlayer from '../../methods/utils/MiniAudioPlayer/MiniAudioPlayer.vue';
+import ModernBreakoutRoomsModal from '../../modern/modal_components/ModernBreakoutRoomsModal.vue';
+import ModernCoHostModal from '../../modern/modal_components/ModernCoHostModal.vue';
+import ModernConfigureWhiteboardModal from '../../modern/modal_components/ModernConfigureWhiteboardModal.vue';
+import ModernDisplaySettingsModal from '../../modern/modal_components/ModernDisplaySettingsModal.vue';
+import ModernEventSettingsModal from '../../modern/modal_components/ModernEventSettingsModal.vue';
+import ModernMediaSettingsModal from '../../modern/modal_components/ModernMediaSettingsModal.vue';
+import ModernMenuModal from '../../modern/modal_components/ModernMenuModal.vue';
+import ModernMessagesModal from '../../modern/modal_components/ModernMessagesModal.vue';
+import ModernPanelistsModal from '../../modern/modal_components/ModernPanelistsModal.vue';
+import ModernParticipantsModal from '../../modern/modal_components/ModernParticipantsModal.vue';
+import ModernPermissionsModal from '../../modern/modal_components/ModernPermissionsModal.vue';
+import ModernPollModal from '../../modern/modal_components/ModernPollModal.vue';
+import ModernRecordingModal from '../../modern/modal_components/ModernRecordingModal.vue';
+import ModernRequestsModal from '../../modern/modal_components/ModernRequestsModal.vue';
+import ModernParticipantsCounterBadge from '../../modern/display_components/ModernParticipantsCounterBadge.vue';
+import ModernShareEventModal from '../../modern/modal_components/ModernShareEventModal.vue';
+import ModernTranslationSettingsModal from '../../modern/modal_components/ModernTranslationSettingsModal.vue';
+import ModernWaitingModal from '../../modern/modal_components/ModernWaitingModal.vue';
 import { useUIOverrides } from '../../composables/useUIOverrides';
 import type { MediasfuUICustomOverrides } from '../../types/ui-overrides';
 // Import methods (from shared folder)
 import { launchMenuModal } from 'mediasfu-shared';
-import { launchRecording } from 'mediasfu-shared';
 import { startRecording } from 'mediasfu-shared';
 import { confirmRecording } from 'mediasfu-shared';
 import { launchWaiting } from 'mediasfu-shared';
@@ -713,20 +902,20 @@ import { launchBreakoutRooms } from 'mediasfu-shared';
 import { launchConfigureWhiteboard } from 'mediasfu-shared';
 
 // Import the platform-specific WebRTC module
-import { mediaDevices } from '@legacy/methods/utils/webrtc/webrtc';
+import { mediaDevices } from '../../methods/utils/webrtc/webrtc';
 
 // mediasfu functions
-import { connectSocket, connectLocalSocket } from '@legacy/sockets/SocketManager';
-import { joinRoomClient } from '@legacy/ProducerClient/producerClientEmits/joinRoomClient';
-import { joinLocalRoom } from '@legacy/producers/producerEmits/joinLocalRoom';
-import { updateRoomParametersClient } from '@legacy/ProducerClient/producerClientEmits/updateRoomParametersClient';
-import { createDeviceClient } from '@legacy/ProducerClient/producerClientEmits/createDeviceClient';
+import { connectSocket, connectLocalSocket } from 'mediasfu-shared';
+import { joinRoomClient } from '../../ProducerClient/producerClientEmits/joinRoomClient';
+import { joinLocalRoom } from '../../producers/producerEmits/joinLocalRoom';
+import { updateRoomParametersClient } from '../../ProducerClient/producerClientEmits/updateRoomParametersClient';
+import { createDeviceClient } from 'mediasfu-shared';
 // Stream methods - use shared where available
 import { switchVideoAlt } from 'mediasfu-shared';
 // These stay in src (not in shared)
-import { clickVideo } from '@legacy/methods/streamMethods/clickVideo';
-import { clickAudio } from '@legacy/methods/streamMethods/clickAudio';
-import { clickScreenShare } from '@legacy/methods/streamMethods/clickScreenShare';
+import { clickVideo } from 'mediasfu-shared';
+import { clickAudio } from 'mediasfu-shared';
+import { clickScreenShare } from 'mediasfu-shared';
 
 // Consumer functions - use shared where available
 import { streamSuccessVideo } from 'mediasfu-shared';
@@ -763,7 +952,7 @@ import { prepopulateUserMedia } from '../../consumers/prepopulateUserMedia';
 import { addVideosGrid } from '../../consumers/addVideosGrid';
 // Still use React versions for these (will migrate later)
 import { consumerResume } from '../../consumers/consumerResume';
-import { sleep } from '@legacy/methods/utils/sleep';
+import { sleep } from 'mediasfu-shared';
 // More consumers from shared
 import { changeVids } from 'mediasfu-shared';
 import { compareActiveNames } from 'mediasfu-shared';
@@ -786,51 +975,80 @@ import { switchUserVideoAlt } from 'mediasfu-shared';
 import { switchUserVideo } from 'mediasfu-shared';
 import { switchUserAudio } from 'mediasfu-shared';
 import { receiveRoomMessages } from 'mediasfu-shared';
-import { formatNumber } from '@legacy/methods/utils/formatNumber';
+import { formatNumber } from 'mediasfu-shared';
 import { connectIps } from 'mediasfu-shared';
 import { connectLocalIps } from 'mediasfu-shared';
-import { pollUpdated } from '@legacy/methods/pollsMethods/pollUpdated';
+import { pollUpdated } from 'mediasfu-shared';
 import { handleCreatePoll } from 'mediasfu-shared';
 import { handleVotePoll } from 'mediasfu-shared';
 import { handleEndPoll } from 'mediasfu-shared';
 import { breakoutRoomUpdated } from 'mediasfu-shared';
-import { startMeetingProgressTimer } from '@legacy/methods/utils/meetingTimer/startMeetingProgressTimer';
+import { startMeetingProgressTimer } from 'mediasfu-shared';
 import { updateRecording } from 'mediasfu-shared';
 import { stopRecording } from 'mediasfu-shared';
+import {
+  pauseOriginalProducer as sharedPauseOriginalProducer,
+  resumeOriginalProducer as sharedResumeOriginalProducer,
+  stopConsumingTranslation as sharedStopConsumingTranslation,
+  type TranslationConsumerSwitchParameters,
+} from 'mediasfu-shared';
 
 // Socket receive methods
-import { userWaiting } from '@legacy/producers/socketReceiveMethods/userWaiting';
-import { personJoined } from '@legacy/producers/socketReceiveMethods/personJoined';
-import { allWaitingRoomMembers } from '@legacy/producers/socketReceiveMethods/allWaitingRoomMembers';
-import { roomRecordParams } from '@legacy/producers/socketReceiveMethods/roomRecordParams';
-import { banParticipant } from '@legacy/producers/socketReceiveMethods/banParticipant';
-import { updatedCoHost } from '@legacy/producers/socketReceiveMethods/updatedCoHost';
-import { participantRequested } from '@legacy/producers/socketReceiveMethods/participantRequested';
-import { screenProducerId } from '@legacy/producers/socketReceiveMethods/screenProducerId';
-import { updateMediaSettings } from '@legacy/producers/socketReceiveMethods/updateMediaSettings';
-import { producerMediaPaused } from '@legacy/producers/socketReceiveMethods/producerMediaPaused';
-import { producerMediaResumed } from '@legacy/producers/socketReceiveMethods/producerMediaResumed';
-import { producerMediaClosed } from '@legacy/producers/socketReceiveMethods/producerMediaClosed';
-import { controlMediaHost } from '@legacy/producers/socketReceiveMethods/controlMediaHost';
-import { meetingEnded } from '@legacy/producers/socketReceiveMethods/meetingEnded';
-import { disconnectUserSelf } from '@legacy/producers/socketReceiveMethods/disconnectUserSelf';
-import { receiveMessage } from '@legacy/producers/socketReceiveMethods/receiveMessage';
-import { meetingTimeRemaining } from '@legacy/producers/socketReceiveMethods/meetingTimeRemaining';
-import { meetingStillThere } from '@legacy/producers/socketReceiveMethods/meetingStillThere';
-import { startRecords } from '@legacy/producers/socketReceiveMethods/startRecords';
-import { reInitiateRecording } from '@legacy/producers/socketReceiveMethods/reInitiateRecording';
-import { getDomains } from '@legacy/producers/socketReceiveMethods/getDomains';
-import { updateConsumingDomains } from '@legacy/producers/socketReceiveMethods/updateConsumingDomains';
-import { recordingNotice } from '@legacy/producers/socketReceiveMethods/recordingNotice';
-import { timeLeftRecording } from '@legacy/producers/socketReceiveMethods/timeLeftRecording';
-import { stoppedRecording } from '@legacy/producers/socketReceiveMethods/stoppedRecording';
-import { hostRequestResponse } from '@legacy/producers/socketReceiveMethods/hostRequestResponse';
-import { allMembers } from '@legacy/producers/socketReceiveMethods/allMembers';
-import { allMembersRest } from '@legacy/producers/socketReceiveMethods/allMembersRest';
-import { disconnect } from '@legacy/producers/socketReceiveMethods/disconnect';
-import { captureCanvasStream } from '@legacy/methods/whiteboardMethods/captureCanvasStream';
+import { userWaiting } from '../../producers/socketReceiveMethods/userWaiting';
+import { personJoined } from '../../producers/socketReceiveMethods/personJoined';
+import { allWaitingRoomMembers } from '../../producers/socketReceiveMethods/allWaitingRoomMembers';
+import { roomRecordParams } from '../../producers/socketReceiveMethods/roomRecordParams';
+import { banParticipant } from '../../producers/socketReceiveMethods/banParticipant';
+import { updatedCoHost } from '../../producers/socketReceiveMethods/updatedCoHost';
+import { participantRequested } from '../../producers/socketReceiveMethods/participantRequested';
+import { screenProducerId } from '../../producers/socketReceiveMethods/screenProducerId';
+import { updateMediaSettings } from '../../producers/socketReceiveMethods/updateMediaSettings';
+import { producerMediaPaused } from '../../producers/socketReceiveMethods/producerMediaPaused';
+import { producerMediaResumed } from '../../producers/socketReceiveMethods/producerMediaResumed';
+import { producerMediaClosed } from '../../producers/socketReceiveMethods/producerMediaClosed';
+import { controlMediaHost } from '../../producers/socketReceiveMethods/controlMediaHost';
+import { meetingEnded } from '../../producers/socketReceiveMethods/meetingEnded';
+import { disconnectUserSelf } from '../../producers/socketReceiveMethods/disconnectUserSelf';
+import { receiveMessage } from '../../producers/socketReceiveMethods/receiveMessage';
+import { meetingTimeRemaining } from 'mediasfu-shared';
+import { meetingStillThere } from '../../producers/socketReceiveMethods/meetingStillThere';
+import { startRecords } from '../../producers/socketReceiveMethods/startRecords';
+import { reInitiateRecording } from '../../producers/socketReceiveMethods/reInitiateRecording';
+import { getDomains } from '../../producers/socketReceiveMethods/getDomains';
+import { updateConsumingDomains } from '../../producers/socketReceiveMethods/updateConsumingDomains';
+import { recordingNotice } from '../../producers/socketReceiveMethods/recordingNotice';
+import { timeLeftRecording } from 'mediasfu-shared';
+import { stoppedRecording } from '../../producers/socketReceiveMethods/stoppedRecording';
+import { hostRequestResponse } from 'mediasfu-shared';
+import { allMembers } from '../../producers/socketReceiveMethods/allMembers';
+import { allMembersRest } from '../../producers/socketReceiveMethods/allMembersRest';
+import { disconnect } from '../../producers/socketReceiveMethods/disconnect';
+import { captureCanvasStream } from 'mediasfu-shared';
 import { resumePauseAudioStreams } from 'mediasfu-shared';
 import { processConsumerTransportsAudio } from 'mediasfu-shared';
+import {
+  translationRoomConfig,
+  translationConfigUpdated,
+  translationLanguageSet,
+  translationSubscribed,
+  translationUnsubscribed,
+  translationProducerReady,
+  translationProducerClosed,
+  translationChannelsAvailable,
+  translationMemberState,
+  translationError,
+  translationTranscript,
+  translationSpeakerOutputChanged,
+  type TranslationRoomConfig,
+  type TranslationProducerMap,
+  type TranslationMemberStateData,
+  type TranslationProducerClosedData,
+  type TranslationProducerReadyData,
+  type TranslationSubscribedData,
+  type TranslationTranscriptData,
+  type TranslationUnsubscribedData,
+} from '../../services/translationReceiveMethods';
+import { createLiveSubtitleService } from '../../services/liveSubtitleService';
 
 // Types
 import type { MediaSFUSocket } from '../../types/socket';
@@ -863,6 +1081,7 @@ import type {
   RecordParams,
   EventType,
   ConsumeSocket,
+  PermissionConfig,
   AllMembersData,
   AllMembersRestData,
   AllWaitingRoomMembersData,
@@ -881,16 +1100,16 @@ import type {
 import type { Button as ControlButton } from '../displayComponents/ControlButtonsComponent.vue';
 import type { ButtonTouch as ControlButtonTouch } from '../displayComponents/ControlButtonsComponentTouch.vue';
 import type { CustomButton as MenuCustomButton } from '../../types/menu';
-import type { RenderableComponent } from '../../types/renderable-component';
-import type { Device, types as MediasoupTypes } from 'mediasoup-client';
-import type { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 import type {
   CustomAudioCardType,
   CustomMiniCardType,
   CustomPreJoinPageType,
   CustomVideoCardType,
   CustomComponentType,
-} from '@legacy/@types/types';
+} from '../../types/custom-renderers';
+import type { RenderableComponent } from '../../types/renderable-component';
+import type { Device, types as MediasoupTypes } from 'mediasoup-client';
+import type { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 import type {
   Shape as WhiteboardShape,
   WhiteboardParameters as WhiteboardComponentParameters,
@@ -901,7 +1120,7 @@ type Producer = MediasoupTypes.Producer;
 type ProducerOptions = MediasoupTypes.ProducerOptions;
 type RtpCapabilities = MediasoupTypes.RtpCapabilities;
 type Transport = MediasoupTypes.Transport;
-import { createResponseJoinRoom } from '@legacy/methods/utils/createResponseJoinRoom';
+import { createResponseJoinRoom } from 'mediasfu-shared';
 
 // Component props interface
 /**
@@ -1087,6 +1306,16 @@ export interface MediasfuGenericOptions {
    * @example "conference" | "webinar" | "broadcast" | "chat" | "generic"
    */
   defaultEventType?: EventType;
+
+  /**
+   * Whether the joiner can request personal translation even if the room host did not enable room-wide translation.
+   */
+  canUsePersonalTranslation?: boolean;
+
+  /**
+   * MediaSFU username whose credits should back personal translation for this joiner.
+   */
+  personalTranslationUsername?: string;
   
   /**
    * Comprehensive UI override system
@@ -1111,6 +1340,19 @@ export interface MediasfuGenericOptions {
    * @see {@link MediasfuUICustomOverrides} for all available overrides
    */
   uiOverrides?: MediasfuUICustomOverrides;
+
+  /**
+   * App-level cloned voices available for translation voice clone mode.
+   * These are passed through to the translation settings modal.
+   */
+  userVoiceClones?: Array<{
+    id?: string;
+    providerVoiceId?: string;
+    voiceId?: string;
+    name?: string;
+    provider?: string;
+    isDefault?: boolean;
+  }>;
 }
 
 // Props with defaults
@@ -1136,7 +1378,10 @@ const props = withDefaults(defineProps<MediasfuGenericOptions>(), {
   customComponent: undefined,
   containerStyle: () => ({}),
   defaultEventType: 'webinar',
+  canUsePersonalTranslation: false,
+  personalTranslationUsername: undefined,
   uiOverrides: undefined,
+  userVoiceClones: undefined,
 });
 
 const reportedUnsupportedCustomKeys = new Set<string>();
@@ -1208,6 +1453,7 @@ const MainScreen = resolveComponent('mainScreen', MainScreenComponent);
 const MainGrid = resolveComponent('mainGrid', MainGridComponent);
 const SubAspect = resolveComponent('subAspect', SubAspectComponent);
 const OtherGrid = resolveComponent('otherGrid', OthergridComponent);
+const MeetingProgressTimerComponent = resolveComponent('meetingProgressTimer', MeetingProgressTimer);
 const FlexibleGridPrimary = resolveComponent('flexibleGrid', FlexibleGrid);
 const FlexibleGridAlt = resolveComponent('flexibleGridAlt', FlexibleGrid);
 const FlexibleVideoComponent = resolveComponent('flexibleVideo', FlexibleVideo);
@@ -1232,7 +1478,10 @@ const RequestsModalComponent = resolveComponent('requestsModal', RequestsModal);
 const WaitingRoomModalComponent = resolveComponent('waitingRoomModal', WaitingRoomModal);
 const CoHostModalComponent = resolveComponent('coHostModal', CoHostModal);
 const MediaSettingsModalComponent = resolveComponent('mediaSettingsModal', MediaSettingsModal);
+const PermissionsModalComponent = resolveComponent('permissionsModal', PermissionsModal);
 const ParticipantsModalComponent = resolveComponent('participantsModal', ParticipantsModal);
+const PanelistsModalComponent = resolveComponent('panelistsModal', PanelistsModal);
+const TranslationSettingsModalComponent = resolveComponent('translationSettingsModal', TranslationSettingsModal);
 const MessagesModalComponent = resolveComponent('messagesModal', MessagesModal);
 const DisplaySettingsModalComponent = resolveComponent('displaySettingsModal', DisplaySettingsModal);
 const ConfirmExitModalComponent = resolveComponent('confirmExitModal', ConfirmExitModal);
@@ -1513,8 +1762,8 @@ const defer_receive = ref<boolean>(false);
 const allAudioStreams = ref<(Participant | Stream)[]>([]);
 const remoteScreenStream = ref<Stream[]>([]);
 
-const screenProducer = ref<Producer | null>(null);
-const localScreenProducer = ref<Producer | null>(null);
+const screenProducer = shallowRef<Producer | null>(null);
+const localScreenProducer = shallowRef<Producer | null>(null);
 const gotAllVids = ref<boolean>(false);
 const paginationHeightWidth = ref<number>(40);
 const paginationDirection = ref<'horizontal' | 'vertical'>('horizontal');
@@ -1530,11 +1779,210 @@ const screenForceFullDisplay = ref<boolean>(false);
 const mainGridStreamRaw = ref<Array<RenderableComponent | ReactElementLike | null | undefined>>([]);
 const otherGridStreams = ref<RenderableComponent[][]>([[], []]);
 const audioOnlyStreams = ref<RenderableComponent[]>([]);
+const translationStreams = ref<RenderableComponent[]>([]);
 
 const componentUpdateQueue: Array<() => Promise<void> | void> = [];
 let isProcessingComponentUpdates = false;
 
 const mediaContainerRef = ref<HTMLElement | null>(null);
+
+type SidebarContentType =
+  | 'none'
+  | 'menu'
+  | 'participants'
+  | 'messages'
+  | 'requests'
+  | 'waiting'
+  | 'coHost'
+  | 'mediaSettings'
+  | 'displaySettings'
+  | 'eventSettings'
+  | 'recording'
+  | 'polls'
+  | 'breakoutRooms'
+  | 'shareEvent'
+  | 'configureWhiteboard'
+  | 'background'
+  | 'permissions'
+  | 'panelists'
+  | 'translation';
+
+const windowWidth = ref<number>(typeof window !== 'undefined' ? window.innerWidth : 0);
+const windowHeight = ref<number>(typeof window !== 'undefined' ? window.innerHeight : 0);
+const activeSidebarContent = ref<SidebarContentType>('none');
+const sidebarNavigationStack = ref<SidebarContentType[]>([]);
+const modernMenuDarkMode = ref<boolean>(true);
+
+const updateModernMenuDarkMode = (value: boolean) => {
+  modernMenuDarkMode.value = value;
+};
+
+const sidebarThemeVars = computed<CSSProperties>(() => {
+  if (modernMenuDarkMode.value) {
+    return {
+      '--ms-modern-page-background': '#081120',
+      '--ms-modern-page-background-accent': '#0f1b33',
+      '--ms-modern-panel-surface': 'rgba(10, 18, 33, 0.82)',
+      '--ms-modern-panel-surface-elevated': 'rgba(15, 27, 49, 0.9)',
+      '--ms-modern-panel-border': 'rgba(148, 163, 184, 0.18)',
+      '--ms-modern-panel-border-strong': 'rgba(96, 165, 250, 0.32)',
+      '--ms-modern-text-primary': '#f8fafc',
+      '--ms-modern-text-secondary': 'rgba(226, 232, 240, 0.78)',
+      '--ms-modern-text-muted': 'rgba(148, 163, 184, 0.82)',
+      '--ms-modern-field-background': 'rgba(15, 23, 42, 0.74)',
+      '--ms-modern-field-border': 'rgba(148, 163, 184, 0.26)',
+      '--ms-modern-field-border-focus': 'rgba(96, 165, 250, 0.72)',
+      '--ms-modern-overlay-backdrop': 'rgba(2, 8, 23, 0.62)',
+      '--ms-modern-overlay-scrim': 'rgba(2, 6, 23, 0.34)',
+      '--ms-modern-shadow-floating': '0 18px 44px rgba(0, 0, 0, 0.38)',
+      '--ms-sidebar-panel-top': 'rgba(15, 23, 42, 0.98)',
+      '--ms-sidebar-panel-bottom': 'rgba(30, 41, 59, 0.95)',
+      '--ms-sidebar-border': 'rgba(255, 255, 255, 0.12)',
+      '--ms-sidebar-backbar-bg': 'rgba(15, 23, 42, 0.5)',
+      '--ms-sidebar-button-bg': 'rgba(255, 255, 255, 0.1)',
+      '--ms-sidebar-button-border': 'rgba(148, 163, 184, 0.14)',
+      '--ms-sidebar-button-text': '#f8fafc',
+    } as CSSProperties;
+  }
+
+  return {
+    '--ms-modern-page-background': '#edf3fb',
+    '--ms-modern-page-background-accent': '#dbe6f2',
+    '--ms-modern-panel-surface': 'rgba(255, 255, 255, 0.82)',
+    '--ms-modern-panel-surface-elevated': 'rgba(255, 255, 255, 0.94)',
+    '--ms-modern-panel-border': 'rgba(148, 163, 184, 0.24)',
+    '--ms-modern-panel-border-strong': 'rgba(59, 130, 246, 0.28)',
+    '--ms-modern-text-primary': '#0f172a',
+    '--ms-modern-text-secondary': 'rgba(30, 41, 59, 0.76)',
+    '--ms-modern-text-muted': 'rgba(71, 85, 105, 0.82)',
+    '--ms-modern-field-background': 'rgba(255, 255, 255, 0.92)',
+    '--ms-modern-field-border': 'rgba(148, 163, 184, 0.34)',
+    '--ms-modern-field-border-focus': 'rgba(59, 130, 246, 0.52)',
+    '--ms-modern-overlay-backdrop': 'rgba(15, 23, 42, 0.18)',
+    '--ms-modern-overlay-scrim': 'rgba(15, 23, 42, 0.08)',
+    '--ms-modern-shadow-floating': '0 18px 44px rgba(15, 23, 42, 0.12)',
+    '--ms-sidebar-panel-top': 'rgba(255, 255, 255, 0.98)',
+    '--ms-sidebar-panel-bottom': 'rgba(226, 232, 240, 0.96)',
+    '--ms-sidebar-border': 'rgba(148, 163, 184, 0.26)',
+    '--ms-sidebar-backbar-bg': 'rgba(255, 255, 255, 0.74)',
+    '--ms-sidebar-button-bg': 'rgba(255, 255, 255, 0.88)',
+    '--ms-sidebar-button-border': 'rgba(148, 163, 184, 0.24)',
+    '--ms-sidebar-button-text': '#0f172a',
+  } as CSSProperties;
+});
+
+const shouldUseSidebar = computed(() => {
+  const isLandscape = windowWidth.value > windowHeight.value;
+  return validated.value && returnUI.value && isLandscape && windowWidth.value >= 1200;
+});
+
+const showButtonLabels = computed(() => windowWidth.value >= 576);
+
+const neutralControlButtonColor = computed(() =>
+  modernMenuDarkMode.value ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
+);
+
+const activeNeutralControlButtonColor = computed(() =>
+  modernMenuDarkMode.value ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)'
+);
+
+const bottomControlButtonColor = computed(() => (modernMenuDarkMode.value ? 'white' : 'black'));
+const roomSurfaceBackgroundColor = 'var(--ms-modern-page-background)';
+
+const getSidebarWidth = (screenWidth: number): number => {
+  const calculatedWidth = screenWidth * 0.2;
+  if (calculatedWidth < 280) return 280;
+  if (calculatedWidth > 420) return 420;
+  return Math.floor(calculatedWidth);
+};
+
+const sidebarWidth = computed(() =>
+  shouldUseSidebar.value && activeSidebarContent.value !== 'none'
+    ? getSidebarWidth(windowWidth.value)
+    : 0
+);
+
+const isSidebarVisible = computed(() => shouldUseSidebar.value && activeSidebarContent.value !== 'none');
+const isSidebarModalVisible = computed(() => !shouldUseSidebar.value && activeSidebarContent.value !== 'none');
+const shouldRouteToHostedSurface = computed(() =>
+  shouldUseSidebar.value || activeSidebarContent.value !== 'none'
+);
+
+const mobileSidebarWidth = computed(() => {
+  if (windowWidth.value <= 0) {
+    return 320;
+  }
+
+  const preferredWidth = Math.floor(windowWidth.value * 0.85);
+  return Math.min(Math.max(preferredWidth, 280), Math.min(windowWidth.value, 400));
+});
+
+const mainScreenWidthFraction = computed(() => {
+  if (!shouldUseSidebar.value || windowWidth.value <= 0) {
+    return 1;
+  }
+
+  return Math.max(0.35, (windowWidth.value - sidebarWidth.value) / windowWidth.value);
+});
+
+const mainAspectContainerProps = computed<HTMLAttributes>(() => ({
+  style: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    overflow: 'hidden',
+  } satisfies CSSProperties,
+}));
+
+const sidebarOverlayProps = computed<HTMLAttributes>(() => ({
+  class: 'mediasfu-modern-sidebar-embedded-overlay',
+  style: {
+    position: 'relative',
+    inset: 'auto',
+    top: 'auto',
+    left: 'auto',
+    width: '100%',
+    height: '100%',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    backgroundColor: 'transparent',
+    background: 'transparent',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
+    zIndex: 'auto',
+    pointerEvents: 'auto',
+  } satisfies CSSProperties,
+}));
+
+const sidebarContentProps = computed<HTMLAttributes>(() => ({
+  class: 'mediasfu-modern-sidebar-embedded-content',
+  style: {
+    position: 'relative',
+    top: 'auto',
+    right: 'auto',
+    bottom: 'auto',
+    left: 'auto',
+    transform: 'none',
+    width: '100%',
+    maxWidth: '100%',
+    height: '100%',
+    maxHeight: '100%',
+    minHeight: 0,
+    boxSizing: 'border-box',
+    border: 'none',
+    borderRadius: 0,
+    background: 'transparent',
+    overflow: 'hidden',
+    boxShadow: 'none',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
+  } satisfies CSSProperties,
+}));
+
+const sidebarModalBackgroundColor = 'var(--ms-modern-panel-surface-elevated)';
 
 let resizeObserver: ResizeObserver | null = null;
 let resizeScheduled = false;
@@ -1734,6 +2182,10 @@ const otherGridComponentLists = computed<[RenderableComponent[], RenderableCompo
 });
 
 const audioOnlyComponents = computed<RenderableComponent[]>(() => normalizeComponentList(audioOnlyStreams.value));
+const translationAudioComponents = computed<RenderableComponent[]>(() => normalizeComponentList(translationStreams.value));
+const renderedAudioComponents = computed<RenderableComponent[]>(() => [
+  ...audioOnlyComponents.value,
+]);
 
 const parseFontSizeValue = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -1908,6 +2360,8 @@ const autoWave = ref<boolean>(true);
 const forceFullDisplay = ref<boolean>(
   eventType.value === 'webinar' || eventType.value === 'conference' ? false : true
 );
+const showSubtitlesOnCards = ref<boolean>(true);
+const liveSubtitleState = createLiveSubtitleService();
 const prevForceFullDisplay = ref<boolean>(false);
 const prevMeetingDisplayType = ref<string>('video');
 
@@ -1948,6 +2402,9 @@ const isDisplaySettingsModalVisible = ref<boolean>(false);
 
 // Other modals
 const isParticipantsModalVisible = ref<boolean>(false);
+const isPermissionsModalVisible = ref<boolean>(false);
+const isPanelistsModalVisible = ref<boolean>(false);
+const isTranslationSettingsModalVisible = ref<boolean>(false);
 const isMessagesModalVisible = ref<boolean>(false);
 const isConfirmExitModalVisible = ref<boolean>(false);
 const isConfirmHereModalVisible = ref<boolean>(false);
@@ -1997,6 +2454,182 @@ const componentSizes = ref<ComponentSizes>({
 // Permissions
 const hasCameraPermission = ref<boolean>(false);
 const hasAudioPermission = ref<boolean>(false);
+const panelists = ref<Participant[]>([]);
+const panelistsFocused = ref<boolean>(false);
+const muteOthersMic = ref<boolean>(false);
+const muteOthersCamera = ref<boolean>(false);
+const permissionConfig = ref<PermissionConfig | null>(null);
+const translationSupported = ref<boolean>(false);
+const translationConfig = ref<TranslationRoomConfig | null>(null);
+const isPersonalTranslation = ref<boolean>(false);
+type TranslationAwareParticipant = Participant & {
+  translationEnabled?: boolean;
+  translationDefaultOutputLanguage?: string | null;
+  translationOriginalProducerId?: string;
+  translationInputLanguage?: string | null;
+};
+
+interface SpeakerTranslationState {
+  speakerId: string;
+  speakerName: string;
+  inputLanguage: string;
+  outputLanguage: string;
+  originalProducerId: string;
+  enabled: boolean;
+}
+
+interface SpeakerTranslationStateUpdateOptions {
+  speakerName?: string;
+  inputLanguage?: string;
+  enabled?: boolean;
+}
+
+interface GridLayoutMeta {
+  rows: number;
+  cols: number;
+  actualRows: number;
+}
+
+const getGridLayoutMeta = (
+  components: RenderableComponent[],
+  rows: number,
+  cols: number,
+): GridLayoutMeta => {
+  if (rows <= 0 || cols <= 0 || components.length === 0) {
+    return { rows: 0, cols: 0, actualRows: 0 };
+  }
+
+  return {
+    rows,
+    cols,
+    actualRows: Math.min(rows, Math.ceil(components.length / cols)),
+  };
+};
+
+const syncMiniCardGridSizes = async () => {
+  if (!validated.value) {
+    return;
+  }
+
+  const primaryMeta = getGridLayoutMeta(
+    otherGridComponentLists.value[0],
+    gridRows.value,
+    gridCols.value,
+  );
+
+  if (primaryMeta.rows <= 0 || primaryMeta.cols <= 0 || primaryMeta.actualRows <= 0) {
+    return;
+  }
+
+  const parameters = getCastedParameters();
+  parameters.getUpdatedAllParams = getUpdatedAllParams;
+
+  await updateMiniCardsGrid({
+    rows: primaryMeta.rows,
+    cols: primaryMeta.cols,
+    defal: true,
+    actualRows: primaryMeta.actualRows,
+    parameters,
+  });
+
+  const altMeta = getGridLayoutMeta(
+    otherGridComponentLists.value[1],
+    altGridRows.value,
+    altGridCols.value,
+  );
+
+  if (altMeta.rows > 0 && altMeta.cols > 0 && altMeta.actualRows > 0) {
+    await updateMiniCardsGrid({
+      rows: altMeta.rows,
+      cols: altMeta.cols,
+      defal: false,
+      actualRows: altMeta.actualRows,
+      parameters,
+    });
+  }
+};
+
+const mySpokenLanguage = ref<string>('en');
+const mySpokenLanguageEnabled = ref<boolean>(false);
+const myDefaultOutputLanguage = ref<string | null>(null);
+const myDefaultListenLanguage = ref<string | null>(null);
+const listenPreferences = ref<Map<string, string>>(new Map());
+const translationProducerMap = ref<TranslationProducerMap>({});
+const activeTranslationProducerIds = ref<Set<string>>(new Set());
+const availableTranslationChannels = ref<Map<string, { languages: string[]; originalProducerId: string }>>(new Map());
+const participantTranslationStates = ref<Map<string, unknown>>(new Map());
+const transcripts = ref<TranslationTranscriptData[]>([]);
+const speakerTranslationStates = ref<Map<string, SpeakerTranslationState>>(new Map());
+const translationPlaybackRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const translationPlaybackRetryLimit = 8;
+const translationPlaybackRetryDelayMs = 120;
+const originalAudioSilenceRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const originalAudioSilenceRetryLimit = 8;
+const originalAudioSilenceRetryDelayMs = 120;
+
+const getTranslationAudioElements = () => {
+  if (typeof document === 'undefined') {
+    return [] as HTMLAudioElement[];
+  }
+
+  return Array.from(
+    document.querySelectorAll<HTMLAudioElement>('audio[data-translation-audio-player="true"]'),
+  );
+};
+
+const tryPlayTranslationAudioElements = () => {
+  let hasStartedPlayback = false;
+
+  getTranslationAudioElements().forEach((audioElement) => {
+    if (!audioElement.srcObject) {
+      return;
+    }
+
+    if (audioElement.paused) {
+      audioElement.play().catch(() => {});
+    }
+
+    const hasCurrentData = typeof HTMLMediaElement === 'undefined'
+      || audioElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+
+    if (!audioElement.paused && hasCurrentData) {
+      hasStartedPlayback = true;
+    }
+  });
+
+  return hasStartedPlayback;
+};
+
+const scheduleTranslationPlaybackPriming = (speakerId: string) => {
+  if (translationPlaybackRetryTimers.has(speakerId)) {
+    tryPlayTranslationAudioElements();
+    return;
+  }
+
+  translationStreams.value = prepareRenderableList([...translationStreams.value]);
+
+  const run = (attempt = 0) => {
+    translationPlaybackRetryTimers.delete(speakerId);
+
+    if (tryPlayTranslationAudioElements() || attempt >= translationPlaybackRetryLimit) {
+      return;
+    }
+
+    const timer = setTimeout(() => run(attempt + 1), translationPlaybackRetryDelayMs);
+    translationPlaybackRetryTimers.set(speakerId, timer);
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => run());
+  } else {
+    run();
+  }
+};
+
+const clearTranslationPlaybackPriming = () => {
+  translationPlaybackRetryTimers.forEach((timer) => clearTimeout(timer));
+  translationPlaybackRetryTimers.clear();
+};
 
 // Transports
 const transportCreated = ref<boolean>(false);
@@ -2004,16 +2637,16 @@ const localTransportCreated = ref<boolean>(false);
 const transportCreatedVideo = ref<boolean>(false);
 const transportCreatedAudio = ref<boolean>(false);
 const transportCreatedScreen = ref<boolean>(false);
-const producerTransport = ref<Transport | null>(null);
-const localProducerTransport = ref<Transport | null>(null);
-const videoProducer = ref<Producer | null>(null);
-const localVideoProducer = ref<Producer | null>(null);
+const producerTransport = shallowRef<Transport | null>(null);
+const localProducerTransport = shallowRef<Transport | null>(null);
+const videoProducer = shallowRef<Producer | null>(null);
+const localVideoProducer = shallowRef<Producer | null>(null);
 const params = ref<ProducerOptions>({} as ProducerOptions);
 const videoParams = ref<ProducerOptions>({} as ProducerOptions);
 const audioParams = ref<ProducerOptions>({} as ProducerOptions);
-const audioProducer = ref<Producer | null>(null);
+const audioProducer = shallowRef<Producer | null>(null);
 const audioLevel = ref<number>(0);
-const localAudioProducer = ref<Producer | null>(null);
+const localAudioProducer = shallowRef<Producer | null>(null);
 const consumerTransports = ref<TransportType[]>([]);
 const consumingTransports = ref<string[]>([]);
 
@@ -2171,6 +2804,7 @@ const computedContainerStyle = computed(() => ({
   maxHeight: '100vh',
   overflow: 'hidden',
   ...props.containerStyle,
+  ...sidebarThemeVars.value,
 }));
 
 const credentials = computed(() => props.credentials);
@@ -2232,15 +2866,559 @@ const updateComponentSizes = (sizes: ComponentSizes) => {
   current.otherWidth = sizes.otherWidth;
 };
 
+const updatePanelists = (value: Participant[]) => {
+  panelists.value = value;
+};
+
+const updatePanelistsFocused = (value: boolean) => {
+  panelistsFocused.value = value;
+};
+
+const updateMuteOthersMic = (value: boolean) => {
+  muteOthersMic.value = value;
+};
+
+const updateMuteOthersCamera = (value: boolean) => {
+  muteOthersCamera.value = value;
+};
+
+const updatePermissionConfig = (value: PermissionConfig) => {
+  permissionConfig.value = value;
+};
+
+const updateTranslationSupported = (value: boolean) => {
+  translationSupported.value = value;
+};
+
+const updateTranslationConfig = (value: TranslationRoomConfig) => {
+  translationConfig.value = value;
+};
+
+const updateMySpokenLanguage = (value: string) => {
+  mySpokenLanguage.value = value;
+};
+
+const updateMySpokenLanguageEnabled = (value: boolean) => {
+  mySpokenLanguageEnabled.value = value;
+};
+
+const updateMyDefaultOutputLanguage = (value: string | null) => {
+  myDefaultOutputLanguage.value = value;
+};
+
+const updateMyDefaultListenLanguage = (value: string | null) => {
+  myDefaultListenLanguage.value = value;
+};
+
+const updateListenPreferences = (updater: (prev: Map<string, string>) => Map<string, string>) => {
+  listenPreferences.value = updater(listenPreferences.value);
+};
+
+const updateTranslationProducerMap = (updater: (prev: TranslationProducerMap) => TranslationProducerMap) => {
+  translationProducerMap.value = updater(translationProducerMap.value);
+};
+
+const updateAvailableTranslationChannels = (
+  speakerId: string,
+  languages: string[],
+  originalProducerId: string,
+) => {
+  const next = new Map(availableTranslationChannels.value);
+  next.set(speakerId, { languages, originalProducerId });
+  availableTranslationChannels.value = next;
+};
+
+const updateParticipantTranslationState = (memberId: string, state: unknown) => {
+  const next = new Map(participantTranslationStates.value);
+  next.set(memberId, state);
+  participantTranslationStates.value = next;
+};
+
+const updateTranscripts = (
+  updater: (prev: TranslationTranscriptData[]) => TranslationTranscriptData[],
+) => {
+  transcripts.value = updater(transcripts.value);
+};
+
+const updateShowSubtitlesOnCardsState = (value: boolean) => {
+  showSubtitlesOnCards.value = value;
+  liveSubtitleState.setShowSubtitlesOnCards(value);
+
+  if (!value) {
+    liveSubtitleState.setLiveSubtitles(new Map());
+  }
+};
+
+liveSubtitleState.setShowSubtitlesOnCards(showSubtitlesOnCards.value);
+
+const updateLiveSubtitleFromTranscript = (transcript: TranslationTranscriptData) => {
+  if (!showSubtitlesOnCards.value || !transcript.speakerId) {
+    return;
+  }
+
+  const subtitle = liveSubtitleState.updateFromTranscript(transcript);
+  const cleanupDelay = Math.max(subtitle.expiresAt - Date.now() + 100, 100);
+
+  setTimeout(() => {
+    liveSubtitleState.clearExpiredSubtitles();
+  }, cleanupDelay);
+};
+
+const updateSpeakerTranslationState = (
+  speakerId: string,
+  outputLanguage: string | null,
+  originalProducerId: string,
+  options: SpeakerTranslationStateUpdateOptions = {},
+) => {
+  const next = new Map(speakerTranslationStates.value);
+
+  if (outputLanguage) {
+    next.set(speakerId, {
+      speakerId,
+      speakerName: options.speakerName ?? speakerId,
+      inputLanguage: options.inputLanguage ?? 'en',
+      outputLanguage,
+      originalProducerId,
+      enabled: options.enabled ?? true,
+    });
+  } else {
+    next.delete(speakerId);
+  }
+
+  speakerTranslationStates.value = next;
+};
+
+const syncSpeakerTranslationStatesFromMembers = (members: Participant[]) => {
+  members.forEach((participant) => {
+    const translationParticipant = participant as TranslationAwareParticipant;
+    const speakerId = translationParticipant.name;
+
+    if (!speakerId || speakerId === member.value) {
+      return;
+    }
+
+    if (
+      translationParticipant.translationEnabled &&
+      translationParticipant.translationDefaultOutputLanguage &&
+      translationParticipant.translationOriginalProducerId
+    ) {
+      updateSpeakerTranslationState(
+        speakerId,
+        translationParticipant.translationDefaultOutputLanguage,
+        translationParticipant.translationOriginalProducerId,
+        {
+          speakerName: speakerId,
+          inputLanguage: translationParticipant.translationInputLanguage ?? 'en',
+          enabled: true,
+        },
+      );
+    }
+  });
+};
+
+const resolveOriginalProducerIdForSpeaker = (speakerId: string): string | null => {
+  const candidates = getOriginalProducerCandidatesForSpeaker(speakerId);
+  return candidates.find(hasOriginalAudioTransport) ?? candidates[0] ?? null;
+};
+
+const hasOriginalAudioTransport = (producerId: string) =>
+  consumerTransports.value.some(
+    (transport) =>
+      transport.producerId === producerId &&
+      transport.consumer?.kind === 'audio' &&
+      !activeTranslationProducerIds.value.has(producerId),
+  );
+
+const addProducerCandidate = (candidates: string[], producerId?: string | null) => {
+  if (producerId && !candidates.includes(producerId)) {
+    candidates.push(producerId);
+  }
+};
+
+const getOriginalProducerCandidatesForSpeaker = (
+  speakerId?: string,
+  preferredProducerId?: string,
+) => {
+  const candidates: string[] = [];
+  addProducerCandidate(candidates, preferredProducerId);
+
+  if (!speakerId) {
+    return candidates;
+  }
+
+  const activeSpeakerState = speakerTranslationStates.value.get(speakerId);
+  addProducerCandidate(candidates, activeSpeakerState?.originalProducerId);
+
+  const availableChannel = availableTranslationChannels.value.get(speakerId);
+  addProducerCandidate(candidates, availableChannel?.originalProducerId);
+
+  const participant = participants.value.find((entry) => {
+    const maybeParticipant = entry as Participant & { id?: string };
+    return maybeParticipant.name === speakerId || maybeParticipant.id === speakerId;
+  });
+  addProducerCandidate(candidates, participant?.audioID);
+
+  const namedAudioStreams = (audStreamNames.value as (Participant | Stream)[]).filter(
+    (stream) => stream.name === speakerId,
+  );
+  namedAudioStreams.forEach((stream) => addProducerCandidate(candidates, stream.producerId));
+
+  const audioStreams = (allAudioStreams.value as (Participant | Stream)[]).filter(
+    (stream) => stream.name === speakerId || stream.producerId?.includes?.(speakerId),
+  );
+  audioStreams.forEach((stream) => addProducerCandidate(candidates, stream.producerId));
+
+  return candidates;
+};
+
+const resolveActiveOriginalProducerId = (
+  originalProducerId: string,
+  speakerId?: string,
+) => {
+  const candidates = getOriginalProducerCandidatesForSpeaker(speakerId, originalProducerId);
+  return candidates.find(hasOriginalAudioTransport) ?? candidates[0] ?? originalProducerId;
+};
+
+const applyOriginalAudioPlaybackSilenced = (producerId: string, silenced: boolean) => {
+  const transport = consumerTransports.value.find(
+    (item) => item.producerId === producerId && item.consumer?.kind === 'audio',
+  );
+  const track = transport?.consumer?.track;
+
+  if (track) {
+    track.enabled = !silenced;
+  }
+
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document
+    .querySelectorAll<HTMLAudioElement>('audio[data-mini-audio-player="true"]')
+    .forEach((audioElement) => {
+      if (audioElement.dataset.producerId !== producerId) {
+        return;
+      }
+
+      if (silenced) {
+        audioElement.pause();
+        audioElement.muted = true;
+        return;
+      }
+
+      audioElement.muted = false;
+      if (audioElement.srcObject) {
+        audioElement.play().catch(() => {});
+      }
+    });
+};
+
+const setOriginalAudioPlaybackSilenced = (producerId: string, silenced: boolean) => {
+  const existingTimer = originalAudioSilenceRetryTimers.get(producerId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    originalAudioSilenceRetryTimers.delete(producerId);
+  }
+
+  applyOriginalAudioPlaybackSilenced(producerId, silenced);
+
+  if (!silenced) {
+    return;
+  }
+
+  const retry = (attempt = 0) => {
+    originalAudioSilenceRetryTimers.delete(producerId);
+    applyOriginalAudioPlaybackSilenced(producerId, true);
+
+    if (attempt >= originalAudioSilenceRetryLimit) {
+      return;
+    }
+
+    const timer = setTimeout(
+      () => retry(attempt + 1),
+      originalAudioSilenceRetryDelayMs,
+    );
+    originalAudioSilenceRetryTimers.set(producerId, timer);
+  };
+
+  const timer = setTimeout(() => retry(1), originalAudioSilenceRetryDelayMs);
+  originalAudioSilenceRetryTimers.set(producerId, timer);
+};
+
+const clearOriginalAudioSilenceRetries = () => {
+  originalAudioSilenceRetryTimers.forEach((timer) => clearTimeout(timer));
+  originalAudioSilenceRetryTimers.clear();
+};
+
+const getTranslationSwitchParameters = (): TranslationConsumerSwitchParameters => ({
+  ...getAllParams(),
+  ...mediaSFUFunctions(),
+  participants: participants.value,
+  ref_participants: ref_participants.value,
+});
+
+const removeTranslationStream = (producerId: string) => {
+  const translationKey = `translation-${producerId}`;
+  const legacyAudioKey = `audio-${producerId}`;
+
+  translationStreams.value = prepareRenderableList(
+    translationStreams.value.filter((item) => item.key !== translationKey),
+  );
+  audioOnlyStreams.value = prepareRenderableList(
+    audioOnlyStreams.value.filter((item) => item.key !== legacyAudioKey),
+  );
+  allAudioStreams.value = allAudioStreams.value.filter((stream) => stream.producerId !== producerId);
+  audStreamNames.value = audStreamNames.value.filter((stream) => stream.producerId !== producerId);
+};
+
+const closeTranslationConsumerByProducerId = async (producerId: string): Promise<boolean> => {
+  const transportIndex = consumerTransports.value.findIndex(
+    (item) => item.producerId === producerId,
+  );
+
+  if (transportIndex === -1) return false;
+
+  const transport = consumerTransports.value[transportIndex]!;
+
+  if (transport.socket_ && transport.serverConsumerTransportId) {
+    transport.socket_.emit(
+      'consumer-close',
+      { serverConsumerId: transport.serverConsumerTransportId },
+      () => {},
+    );
+  }
+
+  transport.consumer?.close();
+  consumerTransports.value = consumerTransports.value.filter((_, index) => index !== transportIndex);
+  consumingTransports.value = consumingTransports.value.filter((activeProducerId) => activeProducerId !== producerId);
+  activeTranslationProducerIds.value.delete(producerId);
+  removeTranslationStream(producerId);
+
+  return true;
+};
+
+const pauseTranslatedOriginalsForMembers = async (members: Participant[]) => {
+  for (const participant of members) {
+    const translationParticipant = participant as TranslationAwareParticipant;
+    const speakerId = translationParticipant.name;
+
+    if (
+      !speakerId ||
+      speakerId === member.value ||
+      !translationParticipant.translationEnabled ||
+      !translationParticipant.translationDefaultOutputLanguage ||
+      !translationParticipant.translationOriginalProducerId
+    ) {
+      continue;
+    }
+
+    await pauseOriginalTranslationProducer(
+      translationParticipant.translationOriginalProducerId,
+      speakerId,
+    );
+  }
+};
+
+const startConsumingTranslation = async (
+  producerId: string,
+  speakerId: string,
+  language: string,
+  _originalProducerId?: string,
+  nsock?: MediaSFUSocket,
+) => {
+  const originalProducerId = _originalProducerId;
+
+  if (originalProducerId) {
+    const existingTranslations = translationProducerMap.value?.[originalProducerId];
+    if (existingTranslations) {
+      const languagesToClose: string[] = [];
+
+      for (const [existingLanguage, existingProducerId] of Object.entries(existingTranslations)) {
+        if (
+          existingProducerId === producerId ||
+          existingLanguage.toLowerCase() === language.toLowerCase()
+        ) {
+          continue;
+        }
+
+        const didClose = await closeTranslationConsumerByProducerId(existingProducerId);
+        if (didClose) {
+          languagesToClose.push(existingLanguage);
+        }
+      }
+
+      if (languagesToClose.length > 0) {
+        updateTranslationProducerMap((prev) => {
+          const next = { ...prev };
+          const currentMap = { ...(next[originalProducerId] || {}) };
+
+          languagesToClose.forEach((existingLanguage) => {
+            delete currentMap[existingLanguage];
+          });
+
+          if (Object.keys(currentMap).length === 0) {
+            delete next[originalProducerId];
+          } else {
+            next[originalProducerId] = currentMap;
+          }
+
+          return next;
+        });
+      }
+    }
+  }
+
+  activeTranslationProducerIds.value.add(producerId);
+
+  const activeSocket = (nsock ?? (socket.value as unknown as MediaSFUSocket));
+  if (!activeSocket?.emit) return;
+
+  if (originalProducerId) {
+    await pauseOriginalTranslationProducer(originalProducerId, speakerId);
+  }
+
+  const signalParameters = getCastedParameters();
+  signalParameters.activeTranslationProducerIds = activeTranslationProducerIds.value;
+
+  await signalNewConsumerTransport({
+    remoteProducerId: producerId,
+    islevel: islevel.value,
+    nsock: activeSocket,
+    parameters: signalParameters,
+  });
+
+  if (originalProducerId) {
+    updateTranslationProducerMap((prev) => ({
+      ...prev,
+      [originalProducerId]: {
+        ...(prev[originalProducerId] || {}),
+        [language]: producerId,
+      },
+    }));
+  }
+};
+
+const pauseOriginalTranslationProducer = async (
+  originalProducerId: string,
+  speakerId?: string,
+) => {
+  const candidateProducerIds = getOriginalProducerCandidatesForSpeaker(speakerId, originalProducerId);
+  const resolvedOriginalProducerId = resolveActiveOriginalProducerId(originalProducerId, speakerId);
+
+  [...new Set([...candidateProducerIds, resolvedOriginalProducerId])].forEach((producerId) => {
+    setOriginalAudioPlaybackSilenced(producerId, true);
+  });
+
+  await sharedPauseOriginalProducer({
+    originalProducerId: resolvedOriginalProducerId,
+    speakerId,
+    parameters: getTranslationSwitchParameters(),
+  });
+};
+
+const resumeOriginalTranslationProducer = async (
+  originalProducerId: string,
+  speakerId?: string,
+) => {
+  const candidateProducerIds = getOriginalProducerCandidatesForSpeaker(speakerId, originalProducerId);
+  const resolvedOriginalProducerId = resolveActiveOriginalProducerId(originalProducerId, speakerId);
+  const producerIdsToResume = [...new Set([...candidateProducerIds, resolvedOriginalProducerId])];
+  const hasRemainingTranslations = producerIdsToResume.some((producerId) => {
+    const remainingTranslations = translationProducerMap.value?.[producerId];
+    return remainingTranslations && Object.keys(remainingTranslations).length > 0;
+  });
+
+  if (hasRemainingTranslations) {
+    return;
+  }
+
+  await sharedResumeOriginalProducer({
+    originalProducerId: resolvedOriginalProducerId,
+    speakerId,
+    parameters: getTranslationSwitchParameters(),
+  });
+
+  producerIdsToResume.forEach((producerId) => {
+    setOriginalAudioPlaybackSilenced(producerId, false);
+  });
+};
+
+const stopConsumingTranslationProducer = async (producerId: string) => {
+  await closeTranslationConsumerByProducerId(producerId);
+};
+
+const stopConsumingTranslationSelection = async (speakerId: string, language: string) => {
+  const originalProducerId = resolveOriginalProducerIdForSpeaker(speakerId);
+  const producerId = originalProducerId ? translationProducerMap.value?.[originalProducerId]?.[language] : undefined;
+
+  const resumedOriginalProducerId = await sharedStopConsumingTranslation({
+    speakerId,
+    language,
+    translationProducerMap: translationProducerMap.value,
+    parameters: getTranslationSwitchParameters(),
+  });
+
+  if (resumedOriginalProducerId) {
+    updateTranslationProducerMap((prev) => {
+      const next = { ...prev };
+      if (!next[resumedOriginalProducerId]) {
+        return next;
+      }
+
+      const remaining = { ...next[resumedOriginalProducerId] };
+      delete remaining[language];
+
+      if (Object.keys(remaining).length === 0) {
+        delete next[resumedOriginalProducerId];
+      } else {
+        next[resumedOriginalProducerId] = remaining;
+      }
+
+      return next;
+    });
+
+    await resumeOriginalTranslationProducer(resumedOriginalProducerId, speakerId);
+  }
+
+  if (!producerId) return;
+
+  consumingTransports.value = consumingTransports.value.filter((activeProducerId) => activeProducerId !== producerId);
+};
+
+const stopConsumingTranslationForSpeaker = async (speakerId: string) => {
+  const originalProducerId = resolveOriginalProducerIdForSpeaker(speakerId);
+  if (!originalProducerId) return;
+
+  const languageMap = translationProducerMap.value?.[originalProducerId] || {};
+  for (const producerId of Object.values(languageMap)) {
+    await stopConsumingTranslationProducer(producerId);
+  }
+
+  updateTranslationProducerMap((prev) => {
+    const next = { ...prev };
+    delete next[originalProducerId];
+    return next;
+  });
+};
+
 const updateIsMenuModalVisible = (value: boolean) => {
   isMenuModalVisible.value = value;
 };
 
 const updateIsRecordingModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    updateActiveSidebarContent('recording');
+    return;
+  }
+
   isRecordingModalVisible.value = value;
   if (value) {
     confirmedToRecord.value = false;
   } else {
+    if (activeSidebarContent.value === 'recording') {
+      closeSidebar();
+    }
+
     if (clearedToRecord.value && clearedToResume.value && recordStarted.value) {
       showRecordButtons.value = true;
     }
@@ -2248,37 +3426,182 @@ const updateIsRecordingModalVisible = (value: boolean) => {
 };
 
 const updateIsSettingsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isSettingsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'eventSettings';
+    scheduleResize();
+    return;
+  }
+
   isSettingsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'eventSettings') {
+    closeSidebar();
+  }
 };
 
 const updateIsRequestsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isRequestsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'requests';
+    scheduleResize();
+    return;
+  }
+
   isRequestsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'requests') {
+    closeSidebar();
+  }
 };
 
 const updateIsWaitingModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isWaitingModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'waiting';
+    scheduleResize();
+    return;
+  }
+
   isWaitingModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'waiting') {
+    closeSidebar();
+  }
 };
 
 const updateIsCoHostModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isCoHostModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'coHost';
+    scheduleResize();
+    return;
+  }
+
   isCoHostModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'coHost') {
+    closeSidebar();
+  }
 };
 
 const updateIsMediaSettingsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isMediaSettingsModalVisible.value = false;
+
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'mediaSettings';
+    scheduleResize();
+    return;
+  }
+
   isMediaSettingsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'mediaSettings') {
+    closeSidebar();
+  }
 };
 
 const updateIsDisplaySettingsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isDisplaySettingsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'displaySettings';
+    scheduleResize();
+    return;
+  }
+
   isDisplaySettingsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'displaySettings') {
+    closeSidebar();
+  }
 };
 
 const updateIsParticipantsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isParticipantsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'participants';
+    scheduleResize();
+    return;
+  }
+
   isParticipantsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'participants') {
+    closeSidebar();
+  }
+};
+
+const updateIsPermissionsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isPermissionsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'permissions';
+    scheduleResize();
+    return;
+  }
+
+  isPermissionsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'permissions') {
+    closeSidebar();
+  }
+};
+
+const updateIsPanelistsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isPanelistsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'panelists';
+    scheduleResize();
+    return;
+  }
+
+  isPanelistsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'panelists') {
+    closeSidebar();
+  }
+};
+
+const updateIsTranslationSettingsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isTranslationSettingsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'translation';
+    scheduleResize();
+    return;
+  }
+
+  isTranslationSettingsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'translation') {
+    closeSidebar();
+  }
 };
 
 const updateIsMessagesModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isMessagesModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'messages';
+    scheduleResize();
+    return;
+  }
+
   isMessagesModalVisible.value = value;
   if (!value) {
     showMessagesBadge.value = false;
+
+    if (activeSidebarContent.value === 'messages') {
+      closeSidebar();
+    }
   }
 };
 
@@ -2295,11 +3618,35 @@ const updateIsLoadingModalVisible = (value: boolean) => {
 };
 
 const updateIsShareEventModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isShareEventModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'shareEvent';
+    scheduleResize();
+    return;
+  }
+
   isShareEventModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'shareEvent') {
+    closeSidebar();
+  }
 };
 
 const updateIsPollModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isPollModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'polls';
+    scheduleResize();
+    return;
+  }
+
   isPollModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'polls') {
+    closeSidebar();
+  }
 };
 
 const updateIsBackgroundModalVisible = (value: boolean) => {
@@ -2307,11 +3654,35 @@ const updateIsBackgroundModalVisible = (value: boolean) => {
 };
 
 const updateIsBreakoutRoomsModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isBreakoutRoomsModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'breakoutRooms';
+    scheduleResize();
+    return;
+  }
+
   isBreakoutRoomsModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'breakoutRooms') {
+    closeSidebar();
+  }
 };
 
 const updateIsConfigureWhiteboardModalVisible = (value: boolean) => {
+  if (value && shouldRouteToHostedSurface.value) {
+    isConfigureWhiteboardModalVisible.value = false;
+    sidebarNavigationStack.value = [];
+    activeSidebarContent.value = 'configureWhiteboard';
+    scheduleResize();
+    return;
+  }
+
   isConfigureWhiteboardModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'configureWhiteboard') {
+    closeSidebar();
+  }
 };
 
 const updateIsScreenboardModalVisible = (value: boolean) => {
@@ -2321,6 +3692,100 @@ const updateIsScreenboardModalVisible = (value: boolean) => {
 const updateIsWhiteboardModalVisible = (value: boolean) => {
   isWhiteboardModalVisible.value = value;
 };
+
+const clearSidebarModalFlags = () => {
+  isMenuModalVisible.value = false;
+  isParticipantsModalVisible.value = false;
+  isMessagesModalVisible.value = false;
+  isRequestsModalVisible.value = false;
+  isWaitingModalVisible.value = false;
+  isCoHostModalVisible.value = false;
+  isMediaSettingsModalVisible.value = false;
+  isDisplaySettingsModalVisible.value = false;
+  isSettingsModalVisible.value = false;
+  isRecordingModalVisible.value = false;
+  isPollModalVisible.value = false;
+  isBreakoutRoomsModalVisible.value = false;
+  isShareEventModalVisible.value = false;
+  isConfigureWhiteboardModalVisible.value = false;
+  isPermissionsModalVisible.value = false;
+  isPanelistsModalVisible.value = false;
+  isTranslationSettingsModalVisible.value = false;
+  confirmedToRecord.value = false;
+};
+
+const closeSidebar = () => {
+  activeSidebarContent.value = 'none';
+  sidebarNavigationStack.value = [];
+  scheduleResize();
+};
+
+function runSidebarContentPreflight(content: SidebarContentType): boolean {
+  if (content === 'recording') {
+    return prepareRecordingSidebar();
+  }
+
+  if (content === 'background') {
+    updateIsBackgroundModalVisible(true);
+  }
+
+  if (content === 'mediaSettings') {
+    void launchMediaSettingsFlow();
+  }
+
+  return true;
+}
+
+const updateActiveSidebarContent = (content: SidebarContentType, pushToStack = false) => {
+  if (!validated.value || !returnUI.value) {
+    activeSidebarContent.value = 'none';
+    sidebarNavigationStack.value = [];
+    return;
+  }
+
+  if (activeSidebarContent.value === content) {
+    closeSidebar();
+    return;
+  }
+
+  if (!runSidebarContentPreflight(content)) {
+    return;
+  }
+
+  if (pushToStack && activeSidebarContent.value !== 'none') {
+    sidebarNavigationStack.value = [...sidebarNavigationStack.value, activeSidebarContent.value];
+  } else if (!pushToStack) {
+    sidebarNavigationStack.value = [];
+  }
+
+  clearSidebarModalFlags();
+  activeSidebarContent.value = content;
+  scheduleResize();
+};
+
+const sidebarNavigateBack = () => {
+  const previousStack = [...sidebarNavigationStack.value];
+  const previousContent = previousStack.pop();
+
+  if (previousContent) {
+    sidebarNavigationStack.value = previousStack;
+    activeSidebarContent.value = previousContent;
+  } else {
+    closeSidebar();
+  }
+};
+
+watch(shouldUseSidebar, () => {
+  if (activeSidebarContent.value !== 'none') {
+    scheduleResize();
+  }
+});
+
+watch(modernMenuDarkMode, () => {
+  if (validated.value && returnUI.value) {
+    scheduleResize();
+  }
+});
 
 const updateParticipants = (value: Participant[]) => {
   participants.value = value;
@@ -2462,6 +3927,27 @@ const getUpdatedAllParams = () => {
   };
 };
 
+const getTranslationSubscriptions = () => new Map(
+  Array.from(listenPreferences.value.entries())
+    .filter(([, language]) => typeof language === 'string' && language.length > 0)
+    .map(([speakerId, language]) => [
+      `${speakerId}_${language.toLowerCase()}`,
+      { speakerId, language: language.toLowerCase() },
+    ]),
+);
+
+const getListenerTranslationPreferences = () => ({
+  perSpeaker: new Map(
+    Array.from(listenPreferences.value.entries())
+      .filter(([, language]) => typeof language === 'string' && language.length > 0)
+      .map(([speakerId, language]) => [
+        speakerId,
+        { speakerId, language, wantOriginal: false },
+      ]),
+  ),
+  globalLanguage: myDefaultListenLanguage.value,
+});
+
 const mediaSFUFunctions = () => {
   // Media SFU functions
   return {
@@ -2559,6 +4045,7 @@ const getAllParams = () => {
     meetingDisplayType: meetingDisplayType.value,
     meetingVideoOptimized: meetingVideoOptimized.value,
     eventType: eventType.value,
+    isDarkModeValue: modernMenuDarkMode.value,
     participants: participants.value,
     filteredParticipants: filteredParticipants.value,
     participantsCounter: participantsCounter.value,
@@ -2733,6 +4220,7 @@ const getAllParams = () => {
     mainGridStream: mainGridStream.value,
     otherGridStreams: otherGridStreams.value,
     audioOnlyStreams: audioOnlyStreams.value,
+    translationStreams: translationStreams.value,
     videoInputs: videoInputs.value,
     audioInputs: audioInputs.value,
     meetingProgressTime: meetingProgressTime.value,
@@ -2775,6 +4263,9 @@ const getAllParams = () => {
     isMediaSettingsModalVisible: isMediaSettingsModalVisible.value,
     isDisplaySettingsModalVisible: isDisplaySettingsModalVisible.value,
     isParticipantsModalVisible: isParticipantsModalVisible.value,
+    isPermissionsModalVisible: isPermissionsModalVisible.value,
+    isPanelistsModalVisible: isPanelistsModalVisible.value,
+    isTranslationSettingsModalVisible: isTranslationSettingsModalVisible.value,
     isMessagesModalVisible: isMessagesModalVisible.value,
     isConfirmExitModalVisible: isConfirmExitModalVisible.value,
     isConfirmHereModalVisible: isConfirmHereModalVisible.value,
@@ -2806,6 +4297,33 @@ const getAllParams = () => {
     componentSizes: componentSizes.value,
     hasCameraPermission: hasCameraPermission.value,
     hasAudioPermission: hasAudioPermission.value,
+    panelists: panelists.value,
+    panelistsFocused: panelistsFocused.value,
+    muteOthersMic: muteOthersMic.value,
+    muteOthersCamera: muteOthersCamera.value,
+    permissionConfig: permissionConfig.value,
+    translationSupported: translationSupported.value,
+    translationConfig: translationConfig.value,
+    isPersonalTranslation: isPersonalTranslation.value,
+    canUsePersonalTranslation: props.canUsePersonalTranslation,
+    personalTranslationUsername: props.personalTranslationUsername,
+    userVoiceClones: props.userVoiceClones,
+    mySpokenLanguage: mySpokenLanguage.value,
+    mySpokenLanguageEnabled: mySpokenLanguageEnabled.value,
+    myDefaultOutputLanguage: myDefaultOutputLanguage.value,
+    myDefaultListenLanguage: myDefaultListenLanguage.value,
+    listenPreferences: listenPreferences.value,
+    translationProducerMap: translationProducerMap.value,
+    activeTranslationProducerIds: activeTranslationProducerIds.value,
+    translationSubscriptions: getTranslationSubscriptions(),
+    availableTranslationChannels: availableTranslationChannels.value,
+    participantTranslationStates: participantTranslationStates.value,
+    transcripts: transcripts.value,
+    getLiveSubtitleForSpeaker: liveSubtitleState.getSubtitleForSpeaker,
+    showSubtitlesOnCards: showSubtitlesOnCards.value,
+    speakerTranslationStates: speakerTranslationStates.value,
+    listenerTranslationPreferences: getListenerTranslationPreferences(),
+    startConsumingTranslation,
     transportCreated: transportCreated.value,
     localTransportCreated: localTransportCreated.value,
     transportCreatedVideo: transportCreatedVideo.value,
@@ -2883,6 +4401,7 @@ const getAllParams = () => {
         const parts = value.split('_');
         if (parts[1]) {
           islevel.value = parts[1];
+          youAreHost.value = parts[1] === '2';
         }
         value = parts[0] || value;
       }
@@ -2891,7 +4410,10 @@ const getAllParams = () => {
     updateAdminPasscode: (value: string) => (adminPasscode.value = value),
     updateYouAreCoHost: (value: boolean) => (youAreCoHost.value = value),
     updateYouAreHost: (value: boolean) => (youAreHost.value = value),
-    updateIslevel: (value: string) => (islevel.value = value),
+    updateIslevel: (value: string) => {
+      islevel.value = value;
+      youAreHost.value = value === '2';
+    },
     updateCoHost,
     updateCoHostResponsibility,
     updateConfirmedToRecord: (value: boolean) => (confirmedToRecord.value = value),
@@ -2900,10 +4422,23 @@ const getAllParams = () => {
     updateEventType: (value: EventType) => {
       eventType.value = value;
       if (value !== 'none') {
+        if (value === 'webinar') {
+          mainHeightWidth.value = 67;
+          prevMainHeightWidth.value = 67;
+          meetingDisplayType.value = 'all';
+        } else if (value === 'broadcast') {
+          mainHeightWidth.value = 100;
+          prevMainHeightWidth.value = 100;
+        } else {
+          mainHeightWidth.value = 0;
+          prevMainHeightWidth.value = 0;
+          meetingDisplayType.value = 'all';
+        }
+
         try {
           setTimeout(() => {
             onResize();
-          }, 1500);
+          }, 1000);
         } catch {
           // Do nothing
         }
@@ -3101,6 +4636,25 @@ const getAllParams = () => {
         ? prepareRenderableList(value as RenderableListSource)
         : emptyRenderableList();
     },
+    updateTranslationStreams: (value: RenderableListSource | null | undefined) => {
+      translationStreams.value = Array.isArray(value)
+        ? prepareRenderableList(value as RenderableListSource)
+        : emptyRenderableList();
+    },
+    addTranslationStream: (
+      value: RenderableComponent | ReactElementLike | null | undefined,
+    ) => {
+      const renderable = convertToRenderableComponent(value);
+      if (!renderable) {
+        return;
+      }
+
+      translationStreams.value = prepareRenderableList([
+        ...translationStreams.value.filter((item) => item.key !== renderable.key),
+        renderable,
+      ]);
+    },
+    removeTranslationStream,
     updateVideoInputs: (value: MediaDeviceInfo[]) => (videoInputs.value = value),
     updateAudioInputs: (value: MediaDeviceInfo[]) => (audioInputs.value = value),
     updateMeetingProgressTime: (value: string) => (meetingProgressTime.value = value),
@@ -3117,6 +4671,7 @@ const getAllParams = () => {
     updateDisplayOption: (value: string) => (displayOption.value = value),
     updateAutoWave: (value: boolean) => (autoWave.value = value),
     updateForceFullDisplay: (value: boolean) => (forceFullDisplay.value = value),
+    updateShowSubtitlesOnCards: updateShowSubtitlesOnCardsState,
     updatePrevForceFullDisplay: (value: boolean) => (prevForceFullDisplay.value = value),
     updatePrevMeetingDisplayType: (value: string) => (prevMeetingDisplayType.value = value),
     updateWaitingRoomFilter: (value: string) => (waitingRoomFilter.value = value),
@@ -3135,6 +4690,9 @@ const getAllParams = () => {
     updateIsMediaSettingsModalVisible,
     updateIsDisplaySettingsModalVisible,
     updateIsParticipantsModalVisible,
+    updateIsPermissionsModalVisible,
+    updateIsPanelistsModalVisible,
+    updateIsTranslationSettingsModalVisible,
     updateIsMessagesModalVisible,
     updateIsConfirmExitModalVisible,
     updateIsConfirmHereModalVisible,
@@ -3217,6 +4775,23 @@ const getAllParams = () => {
     updateComponentSizes,
     updateHasCameraPermission: (value: boolean) => (hasCameraPermission.value = value),
     updateHasAudioPermission: (value: boolean) => (hasAudioPermission.value = value),
+    updatePanelists,
+    updatePanelistsFocused,
+    updateMuteOthersMic,
+    updateMuteOthersCamera,
+    updatePermissionConfig,
+    updateTranslationSupported,
+    updateTranslationConfig,
+    updateMySpokenLanguage,
+    updateMySpokenLanguageEnabled,
+    updateMyDefaultOutputLanguage,
+    updateMyDefaultListenLanguage,
+    updateListenPreferences,
+    updateTranslationProducerMap,
+    updateAvailableTranslationChannels,
+    updateParticipantTranslationState,
+    updateTranscripts,
+    updateSpeakerTranslationState,
     updateTransportCreated: (value: boolean) => (transportCreated.value = value),
     updateLocalTransportCreated: (value: boolean) => (localTransportCreated.value = value),
     updateTransportCreatedVideo: (value: boolean) => (transportCreatedVideo.value = value),
@@ -3435,17 +5010,31 @@ const computeDimensionsMethod = ({
 };
 
 const applyComponentSizes = (defaultFraction: number) => {
+  let nextMainHeightWidth = mainHeightWidth.value;
+
+  if (shared.value || shareScreenStarted.value || whiteboardStarted.value) {
+    nextMainHeightWidth = 84;
+    if (mainHeightWidth.value !== nextMainHeightWidth) {
+      mainHeightWidth.value = nextMainHeightWidth;
+    }
+  } else if (eventType.value === 'conference' && mainHeightWidth.value === 67) {
+    nextMainHeightWidth = 0;
+    mainHeightWidth.value = nextMainHeightWidth;
+  }
+
   if (eventType.value === 'chat' && mainHeightWidth.value > 0) {
     mainHeightWidth.value = 0;
+    nextMainHeightWidth = 0;
   }
   if (eventType.value === 'broadcast' && mainHeightWidth.value !== 100) {
     mainHeightWidth.value = 100;
+    nextMainHeightWidth = 100;
   }
 
   const { mainHeight, otherHeight, mainWidth, otherWidth } = computeDimensionsMethod({
-    containerWidthFraction: 1,
+    containerWidthFraction: mainScreenWidthFraction.value,
     containerHeightFraction: 1,
-    mainSize: eventType.value === 'chat' ? 0 : eventType.value === 'broadcast' ? 100 : mainHeightWidth.value,
+    mainSize: eventType.value === 'chat' ? 0 : eventType.value === 'broadcast' ? 100 : nextMainHeightWidth,
     doStack: true,
     defaultFraction,
   });
@@ -3469,6 +5058,8 @@ const applyComponentSizes = (defaultFraction: number) => {
 
 const handleResize = async () => {
   let fraction = 0.0;
+  windowWidth.value = window.innerWidth;
+  windowHeight.value = window.innerHeight;
 
   if (eventType.value === 'webinar' || eventType.value === 'conference') {
     const currentHeight = window.innerHeight;
@@ -3500,6 +5091,8 @@ const handleResize = async () => {
     changed: true,
     parameters: getCastedParameters(),
   });
+
+  await syncMiniCardGridSizes();
 };
 
 const onResize = () => {
@@ -3530,25 +5123,12 @@ const updateStatesToInitialValues = async () => {
 const recordButton = computed<ControlButtonTouch[]>(() => [
   {
     icon: faRecordVinyl,
-    text: 'Record',
+    name: 'Record',
     onPress: () => {
-      launchRecording({
-        updateIsRecordingModalVisible,
-        isRecordingModalVisible: isRecordingModalVisible.value,
-        showAlert,
-        stopLaunchRecord: stopLaunchRecord.value,
-        canLaunchRecord: canLaunchRecord.value,
-        recordingAudioSupport: recordingAudioSupport.value,
-        recordingVideoSupport: recordingVideoSupport.value,
-        updateCanRecord: (value: boolean) => (canRecord.value = value),
-        updateClearedToRecord: (value: boolean) => (clearedToRecord.value = value),
-        recordStarted: recordStarted.value,
-        recordPaused: recordPaused.value,
-        localUIMode: props.useLocalUIMode,
-      });
+      openRecordingPanel();
     },
-    activeColor: 'black',
-    inActiveColor: 'black',
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
     show: true,
   },
 ]);
@@ -3562,8 +5142,8 @@ const recordButtons = computed<ControlButtonTouch[]>(() => [
   parameters: getCastedParameters(),
       });
     },
-    activeColor: 'black',
-    inActiveColor: 'black',
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
     alternateIcon: faPauseCircle,
     show: true,
   },
@@ -3575,8 +5155,8 @@ const recordButtons = computed<ControlButtonTouch[]>(() => [
   parameters: getCastedParameters(),
       });
     },
-    activeColor: 'green',
-    inActiveColor: 'black',
+    activeColor: '#EF4444',
+    inActiveColor: '#EF4444',
     show: true,
   },
   {
@@ -3599,6 +5179,8 @@ const recordButtons = computed<ControlButtonTouch[]>(() => [
               borderWidth: 0,
               padding: 0,
               margin: 0,
+              color: activeNeutralControlButtonColor.value,
+              fontWeight: 600,
             },
           },
           recordingProgressTime.value
@@ -3610,54 +5192,188 @@ const recordButtons = computed<ControlButtonTouch[]>(() => [
     icon: faDotCircle,
     active: false,
     onPress: () => console.log('Status pressed'),
-    activeColor: 'black',
+    activeColor: recordPaused.value === false ? '#EF4444' : '#F59E0B',
     inActiveColor: recordPaused.value === false ? 'red' : 'yellow',
     show: true,
   },
   {
     icon: faCog,
     active: false,
-    onPress: () => {
-      launchRecording({
-        updateIsRecordingModalVisible,
-        isRecordingModalVisible: isRecordingModalVisible.value,
-        showAlert,
-        stopLaunchRecord: stopLaunchRecord.value,
-        canLaunchRecord: canLaunchRecord.value,
-        recordingAudioSupport: recordingAudioSupport.value,
-        recordingVideoSupport: recordingVideoSupport.value,
-        updateCanRecord: (value: boolean) => (canRecord.value = value),
-        updateClearedToRecord: (value: boolean) => (clearedToRecord.value = value),
-        recordStarted: recordStarted.value,
-        recordPaused: recordPaused.value,
-        localUIMode: props.useLocalUIMode,
-      });
-    },
-    activeColor: 'green',
-    inActiveColor: 'black',
+    onPress: () => openRecordingPanel(),
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
     show: true,
   },
 ]);
+
+const prepareRecordingSidebar = () => {
+  if (stopLaunchRecord.value && !props.useLocalUIMode) {
+    showAlert?.({
+      message: 'Recording has already ended or you are not allowed to record',
+      type: 'danger',
+      duration: 3000,
+    });
+    return false;
+  }
+
+  if (recordStarted.value && !recordPaused.value) {
+    showAlert?.({
+      message: 'You can only re-configure recording after pausing it',
+      type: 'danger',
+      duration: 3000,
+    });
+    return false;
+  }
+
+  if (!recordingAudioSupport.value && !recordingVideoSupport.value && !props.useLocalUIMode) {
+    showAlert?.({
+      message: 'You are not allowed to record',
+      type: 'danger',
+      duration: 3000,
+    });
+    return false;
+  }
+
+  if (canLaunchRecord.value && !props.useLocalUIMode) {
+    clearedToRecord.value = false;
+    canRecord.value = false;
+  }
+
+  confirmedToRecord.value = false;
+  isRecordingModalVisible.value = false;
+  return true;
+};
+
+const launchMediaSettingsFlow = () => {
+  launchMediaSettings({
+    updateIsMediaSettingsModalVisible,
+    isMediaSettingsModalVisible: isMediaSettingsModalVisible.value,
+    audioInputs: audioInputs.value,
+    videoInputs: videoInputs.value,
+    updateAudioInputs: (value: MediaDeviceInfo[]) => (audioInputs.value = value),
+    updateVideoInputs: (value: MediaDeviceInfo[]) => (videoInputs.value = value),
+    mediaDevices,
+  });
+};
+
+const openSidebarOrRun = (content: SidebarContentType, _modalLauncher: () => void, pushToStack = false) => {
+  updateActiveSidebarContent(content, pushToStack);
+};
+
+const openMenuPanel = () =>
+  openSidebarOrRun('menu', () =>
+    launchMenuModal({
+      updateIsMenuModalVisible,
+      isMenuModalVisible: isMenuModalVisible.value,
+    })
+  );
+
+const openParticipantsPanel = () =>
+  openSidebarOrRun('participants', () =>
+    launchParticipants({
+      updateIsParticipantsModalVisible,
+      isParticipantsModalVisible: isParticipantsModalVisible.value,
+    })
+  );
+
+const openMessagesPanel = () =>
+  openSidebarOrRun('messages', () =>
+    launchMessages({
+      updateIsMessagesModalVisible,
+      isMessagesModalVisible: isMessagesModalVisible.value,
+    })
+  );
+
+const openShareEventPanel = () =>
+  openSidebarOrRun('shareEvent', () => updateIsShareEventModalVisible(!isShareEventModalVisible.value));
+
+const openRecordingPanel = (pushToStack = false) => {
+  updateActiveSidebarContent('recording', pushToStack);
+};
+
+const openEventSettingsPanel = (pushToStack = false) =>
+  openSidebarOrRun('eventSettings', () =>
+    launchSettings({
+      updateIsSettingsModalVisible,
+      isSettingsModalVisible: isSettingsModalVisible.value,
+    }),
+  pushToStack);
+
+const openRequestsPanel = (pushToStack = false) =>
+  openSidebarOrRun('requests', () =>
+    launchRequests({
+      updateIsRequestsModalVisible,
+      isRequestsModalVisible: isRequestsModalVisible.value,
+    }),
+  pushToStack);
+
+const openWaitingPanel = (pushToStack = false) =>
+  openSidebarOrRun('waiting', () =>
+    launchWaiting({
+      updateIsWaitingModalVisible,
+      isWaitingModalVisible: isWaitingModalVisible.value,
+    }),
+  pushToStack);
+
+const openCoHostPanel = (pushToStack = false) =>
+  openSidebarOrRun('coHost', () =>
+    launchCoHost({
+      updateIsCoHostModalVisible,
+      isCoHostModalVisible: isCoHostModalVisible.value,
+    }),
+  pushToStack);
+
+const openMediaSettingsPanel = (pushToStack = false) => {
+  updateActiveSidebarContent('mediaSettings', pushToStack);
+};
+
+const openDisplaySettingsPanel = (pushToStack = false) =>
+  openSidebarOrRun('displaySettings', () =>
+    launchDisplaySettings({
+      updateIsDisplaySettingsModalVisible,
+      isDisplaySettingsModalVisible: isDisplaySettingsModalVisible.value,
+    }),
+  pushToStack);
+
+const openPollsPanel = (pushToStack = false) =>
+  openSidebarOrRun('polls', () =>
+    launchPoll({
+      updateIsPollModalVisible,
+      isPollModalVisible: isPollModalVisible.value,
+    }),
+  pushToStack);
+
+const openBreakoutRoomsPanel = (pushToStack = false) =>
+  openSidebarOrRun('breakoutRooms', () =>
+    launchBreakoutRooms({
+      updateIsBreakoutRoomsModalVisible,
+      isBreakoutRoomsModalVisible: isBreakoutRoomsModalVisible.value,
+    }),
+  pushToStack);
+
+const openPermissionsPanel = (pushToStack = false) =>
+  openSidebarOrRun('permissions', () => updateIsPermissionsModalVisible(true), pushToStack);
+
+const openPanelistsPanel = (pushToStack = false) =>
+  openSidebarOrRun('panelists', () => updateIsPanelistsModalVisible(true), pushToStack);
+
+const openTranslationPanel = (pushToStack = false) =>
+  openSidebarOrRun('translation', () => updateIsTranslationSettingsModalVisible(true), pushToStack);
+
+const openConfigureWhiteboardPanel = (pushToStack = false) =>
+  openSidebarOrRun('configureWhiteboard', () =>
+    launchConfigureWhiteboard({
+      updateIsConfigureWhiteboardModalVisible,
+      isConfigureWhiteboardModalVisible: isConfigureWhiteboardModalVisible.value,
+    }),
+  pushToStack);
 
 const customMenuButtons = computed<MenuCustomButton[]>(() => [
   {
     icon: faRecordVinyl,
     text: 'Record',
     action: () => {
-      launchRecording({
-        updateIsRecordingModalVisible,
-        isRecordingModalVisible: isRecordingModalVisible.value,
-        showAlert,
-        stopLaunchRecord: stopLaunchRecord.value,
-        canLaunchRecord: canLaunchRecord.value,
-        recordingAudioSupport: recordingAudioSupport.value,
-        recordingVideoSupport: recordingVideoSupport.value,
-        updateCanRecord: (value: boolean) => (canRecord.value = value),
-        updateClearedToRecord: (value: boolean) => (clearedToRecord.value = value),
-        recordStarted: recordStarted.value,
-        recordPaused: recordPaused.value,
-        localUIMode: props.useLocalUIMode,
-      });
+      openRecordingPanel(true);
     },
     show: !showRecordButtons.value && islevel.value === '2',
   },
@@ -3677,10 +5393,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faCog,
     text: 'Event Settings',
     action: () => {
-      launchSettings({
-        updateIsSettingsModalVisible,
-        isSettingsModalVisible: isSettingsModalVisible.value,
-      });
+      openEventSettingsPanel(true);
     },
     show: islevel.value === '2',
   },
@@ -3688,10 +5401,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faUsers,
     text: 'Requests',
     action: () => {
-      launchRequests({
-        updateIsRequestsModalVisible,
-        isRequestsModalVisible: isRequestsModalVisible.value,
-      });
+      openRequestsPanel(true);
     },
     show:
       islevel.value === '2' ||
@@ -3705,10 +5415,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faClock,
     text: 'Waiting',
     action: () => {
-      launchWaiting({
-        updateIsWaitingModalVisible,
-        isWaitingModalVisible: isWaitingModalVisible.value,
-      });
+      openWaitingPanel(true);
     },
     show:
       islevel.value === '2' ||
@@ -3722,10 +5429,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faUserPlus,
     text: 'Co-host',
     action: () => {
-      launchCoHost({
-        updateIsCoHostModalVisible,
-        isCoHostModalVisible: isCoHostModalVisible.value,
-      });
+      openCoHostPanel(true);
     },
     show: islevel.value === '2',
   },
@@ -3733,15 +5437,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faTools,
     text: 'Set Media',
     action: () => {
-      launchMediaSettings({
-        updateIsMediaSettingsModalVisible,
-        isMediaSettingsModalVisible: isMediaSettingsModalVisible.value,
-        audioInputs: audioInputs.value,
-        videoInputs: videoInputs.value,
-        updateAudioInputs: (value: MediaDeviceInfo[]) => (audioInputs.value = value),
-        updateVideoInputs: (value: MediaDeviceInfo[]) => (videoInputs.value = value),
-        mediaDevices,
-      });
+      openMediaSettingsPanel(true);
     },
     show: true,
   },
@@ -3749,10 +5445,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faDesktop,
     text: 'Display',
     action: () => {
-      launchDisplaySettings({
-        updateIsDisplaySettingsModalVisible,
-        isDisplaySettingsModalVisible: isDisplaySettingsModalVisible.value,
-      });
+      openDisplaySettingsPanel(true);
     },
     show: true,
   },
@@ -3760,10 +5453,7 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faPoll,
     text: 'Poll',
     action: () => {
-      launchPoll({
-        updateIsPollModalVisible,
-        isPollModalVisible: isPollModalVisible.value,
-      });
+      openPollsPanel(true);
     },
     show: true,
   },
@@ -3771,54 +5461,101 @@ const customMenuButtons = computed<MenuCustomButton[]>(() => [
     icon: faUserFriends,
     text: 'Breakout Rooms',
     action: () => {
-      launchBreakoutRooms({
-        updateIsBreakoutRoomsModalVisible,
-        isBreakoutRoomsModalVisible: isBreakoutRoomsModalVisible.value,
-      });
+      openBreakoutRoomsPanel(true);
     },
     show: islevel.value === '2',
+  },
+  {
+    icon: faUserShield,
+    text: 'Permissions',
+    action: () => {
+      openPermissionsPanel(true);
+    },
+    show: islevel.value === '2',
+  },
+  {
+    icon: faUserTie,
+    text: 'Panelists',
+    action: () => {
+      openPanelistsPanel(true);
+    },
+    show: islevel.value === '2',
+  },
+  {
+    icon: faGlobe,
+    text: 'Translation',
+    action: () => {
+      openTranslationPanel(true);
+    },
+    show: translationSupported.value || props.canUsePersonalTranslation,
   },
   {
     icon: faChalkboardTeacher,
     text: 'Whiteboard',
     action: () => {
-      launchConfigureWhiteboard({
-        updateIsConfigureWhiteboardModalVisible,
-        isConfigureWhiteboardModalVisible: isConfigureWhiteboardModalVisible.value,
-      });
+      openConfigureWhiteboardPanel(true);
     },
     show: islevel.value === '2',
   },
 ]);
 
+const canUseBroadcastMediaControls = computed(() =>
+  eventType.value !== 'broadcast' || (islevel.value === '2' && youAreHost.value),
+);
+
 const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
   {
-    icon: faUsers,
+    name: modernMenuDarkMode.value ? 'Light Mode' : 'Dark Mode',
+    icon: modernMenuDarkMode.value ? faSun : faMoon,
     active: true,
-    alternateIcon: faUsers,
-    onPress: () => {
-      launchParticipants({
-        updateIsParticipantsModalVisible,
-        isParticipantsModalVisible: isParticipantsModalVisible.value,
-      });
-    },
-    activeColor: 'black',
-    inActiveColor: 'black',
-    show: islevel.value === '2',
-  },
-  {
-    icon: faShareAlt,
-    active: true,
-    alternateIcon: faShareAlt,
-    onPress: () => updateIsShareEventModalVisible(!isShareEventModalVisible.value),
-    activeColor: 'black',
-    inActiveColor: 'black',
+    alternateIcon: modernMenuDarkMode.value ? faSun : faMoon,
+    onPress: () => updateModernMenuDarkMode(!modernMenuDarkMode.value),
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
     show: true,
   },
   {
+    name: 'People',
+    icon: faUsers,
+    active: true,
+    alternateIcon: faUsers,
+    onPress: openParticipantsPanel,
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
+    show: canUseBroadcastMediaControls.value,
+  },
+  {
+    name: 'Share',
+    icon: faShareAlt,
+    active: true,
+    alternateIcon: faShareAlt,
+    onPress: openShareEventPanel,
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
+    show: true,
+  },
+  {
+    name: forceFullDisplay.value ? 'Exit Full Display' : 'Full Display',
+    icon: forceFullDisplay.value ? faCompress : faExpand,
+    active: forceFullDisplay.value,
+    alternateIcon: forceFullDisplay.value ? faCompress : faExpand,
+    onPress: () => {
+      forceFullDisplay.value = !forceFullDisplay.value;
+      scheduleResize();
+    },
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
+    show: canUseBroadcastMediaControls.value && videoActive.value,
+  },
+  {
+    name: 'Chat',
     customComponent: () =>
       h('div', { style: { position: 'relative' } }, [
-        h(FontAwesomeIcon, { icon: faComments, size: 'lg', color: 'black' }),
+        h(FontAwesomeIcon, {
+          icon: faComments,
+          size: 'lg',
+          color: neutralControlButtonColor.value,
+        }),
         showMessagesBadge.value &&
           h(
             'div',
@@ -3845,14 +5582,11 @@ const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
             )
           ),
       ]),
-    onPress: () =>
-      launchMessages({
-        updateIsMessagesModalVisible,
-        isMessagesModalVisible: isMessagesModalVisible.value,
-      }),
+    onPress: openMessagesPanel,
     show: true,
   },
   {
+    name: 'Switch Camera',
     icon: faSync,
     active: true,
     alternateIcon: faSync,
@@ -3860,11 +5594,12 @@ const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
       switchVideoAlt({
   parameters: getCastedParameters(),
       }),
-    activeColor: 'black',
-    inActiveColor: 'black',
-    show: islevel.value === '2',
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
+    show: canUseBroadcastMediaControls.value,
   },
   {
+    name: videoActive.value ? 'Video Off' : 'Video On',
     icon: faVideoSlash,
     alternateIcon: faVideo,
     active: videoActive.value,
@@ -3872,11 +5607,12 @@ const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
       clickVideo({
   parameters: getCastedParameters(),
       }),
-    show: islevel.value === '2',
+    show: canUseBroadcastMediaControls.value,
     activeColor: 'green',
     inActiveColor: 'red',
   },
   {
+    name: micActive.value ? 'Mute' : 'Unmute',
     icon: faMicrophoneSlash,
     alternateIcon: faMicrophone,
     active: micActive.value,
@@ -3886,40 +5622,10 @@ const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
       }),
     activeColor: 'green',
     inActiveColor: 'red',
-    show: islevel.value === '2',
+    show: canUseBroadcastMediaControls.value,
   },
   {
-    customComponent: () =>
-      h(
-        'div',
-        {
-          style: {
-            backgroundColor: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0',
-            margin: '5px',
-          },
-        },
-        [
-          h(FontAwesomeIcon, { icon: faChartBar, size: 'lg', color: 'black' }),
-          h(
-            'span',
-            {
-              style: {
-                backgroundColor: 'transparent',
-                padding: '0',
-                margin: '0',
-              },
-            },
-            participantsCounter.value.toString()
-          ),
-        ]
-      ),
-    show: true,
-  },
-  {
+    name: 'End',
     icon: faPhone,
     active: endCallActive.value,
     onPress: () =>
@@ -3944,18 +5650,20 @@ const controlBroadcastButtons = computed<ControlButtonTouch[]>(() => [
 
 const controlChatButtons = computed<ControlButtonTouch[]>(() => [
   {
+    name: 'Share',
     icon: faShareAlt,
     active: true,
     alternateIcon: faShareAlt,
     onPress: () => updateIsShareEventModalVisible(!isShareEventModalVisible.value),
-    activeColor: 'black',
-    inActiveColor: 'black',
+    activeColor: '#e2e8f0',
+    inActiveColor: '#e2e8f0',
     show: true,
   },
   {
+    name: 'Chat',
     customComponent: () =>
       h('div', { style: { position: 'relative' } }, [
-        h(FontAwesomeIcon, { icon: faComments, size: 'lg', color: 'black' }),
+        h(FontAwesomeIcon, { icon: faComments, size: 'lg', color: '#e2e8f0' }),
         showMessagesBadge.value &&
           h(
             'div',
@@ -3990,6 +5698,7 @@ const controlChatButtons = computed<ControlButtonTouch[]>(() => [
     show: true,
   },
   {
+    name: 'Switch',
     icon: faSync,
     active: true,
     alternateIcon: faSync,
@@ -3997,11 +5706,12 @@ const controlChatButtons = computed<ControlButtonTouch[]>(() => [
       switchVideoAlt({
   parameters: getCastedParameters(),
       }),
-    activeColor: 'black',
-    inActiveColor: 'black',
+    activeColor: '#e2e8f0',
+    inActiveColor: '#e2e8f0',
     show: true,
   },
   {
+    name: videoActive.value ? 'Video Off' : 'Video On',
     icon: faVideoSlash,
     alternateIcon: faVideo,
     active: videoActive.value,
@@ -4014,6 +5724,7 @@ const controlChatButtons = computed<ControlButtonTouch[]>(() => [
     show: true,
   },
   {
+    name: micActive.value ? 'Mute' : 'Unmute',
     icon: faMicrophoneSlash,
     alternateIcon: faMicrophone,
     active: micActive.value,
@@ -4026,6 +5737,7 @@ const controlChatButtons = computed<ControlButtonTouch[]>(() => [
     show: true,
   },
   {
+    name: 'Leave',
     icon: faPhone,
     active: endCallActive.value,
     onPress: () =>
@@ -4041,6 +5753,7 @@ const controlChatButtons = computed<ControlButtonTouch[]>(() => [
 
 const controlButtons = computed<ControlButton[]>(() => [
   {
+    name: showButtonLabels.value ? (micActive.value ? 'Mute' : 'Unmute') : undefined,
     icon: faMicrophoneSlash,
     alternateIcon: faMicrophone,
     active: micActive.value,
@@ -4051,9 +5764,10 @@ const controlButtons = computed<ControlButton[]>(() => [
     activeColor: 'green',
     inActiveColor: 'red',
     disabled: audioSwitching.value,
-    show: true,
+    show: canUseBroadcastMediaControls.value,
   },
   {
+    name: showButtonLabels.value ? (videoActive.value ? 'Video Off' : 'Video On') : undefined,
     icon: faVideoSlash,
     alternateIcon: faVideo,
     active: videoActive.value,
@@ -4064,16 +5778,17 @@ const controlButtons = computed<ControlButton[]>(() => [
     activeColor: 'green',
     inActiveColor: 'red',
     disabled: videoSwitching.value,
-    show: true,
+    show: canUseBroadcastMediaControls.value,
   },
   {
+    name: showButtonLabels.value ? (screenShareActive.value ? 'Stop Share' : 'Share Screen') : undefined,
     icon: faDesktop,
     alternateIconComponent: () =>
       h('div', { style: { position: 'relative', display: 'inline-block' } }, [
         h(FontAwesomeIcon, {
           icon: faDesktop,
           size: 'lg',
-          style: { color: !screenShareActive.value ? 'black' : 'green' },
+          style: { color: screenShareActive.value ? '#22C55E' : neutralControlButtonColor.value },
         }),
         !screenShareActive.value &&
           h(FontAwesomeIcon, {
@@ -4096,9 +5811,10 @@ const controlButtons = computed<ControlButton[]>(() => [
     activeColor: 'green',
     inActiveColor: 'red',
     disabled: false,
-    show: true,
+    show: canUseBroadcastMediaControls.value,
   },
   {
+    name: showButtonLabels.value ? 'End' : undefined,
     icon: faPhone,
     active: endCallActive.value,
     onPress: () =>
@@ -4112,22 +5828,20 @@ const controlButtons = computed<ControlButton[]>(() => [
     show: true,
   },
   {
+    name: showButtonLabels.value ? 'People' : undefined,
     icon: faUsers,
     active: participantsActive.value,
-    onPress: () =>
-      launchParticipants({
-        updateIsParticipantsModalVisible,
-        isParticipantsModalVisible: isParticipantsModalVisible.value,
-      }),
-    activeColor: 'black',
-    inActiveColor: 'black',
+    onPress: openParticipantsPanel,
+    activeColor: activeNeutralControlButtonColor.value,
+    inActiveColor: neutralControlButtonColor.value,
     disabled: false,
-    show: true,
+    show: canUseBroadcastMediaControls.value,
   },
   {
+    name: showButtonLabels.value ? 'Menu' : undefined,
     customComponent: () =>
       h('div', { style: { position: 'relative' } }, [
-        h(FontAwesomeIcon, { icon: faBars, size: 'lg', color: 'black' }),
+        h(FontAwesomeIcon, { icon: faBars, size: 'lg', color: neutralControlButtonColor.value }),
         h(
           'div',
           {
@@ -4158,17 +5872,14 @@ const controlButtons = computed<ControlButton[]>(() => [
           )
         ),
       ]),
-    onPress: () =>
-      launchMenuModal({
-        updateIsMenuModalVisible,
-        isMenuModalVisible: isMenuModalVisible.value,
-      }),
+    onPress: openMenuPanel,
     show: true,
   },
   {
+    name: showButtonLabels.value ? 'Chat' : undefined,
     customComponent: () =>
       h('div', { style: { position: 'relative' } }, [
-        h(FontAwesomeIcon, { icon: faComments, size: 'lg', color: 'black' }),
+        h(FontAwesomeIcon, { icon: faComments, size: 'lg', color: neutralControlButtonColor.value }),
         showMessagesBadge.value &&
           h(
             'div',
@@ -4200,14 +5911,465 @@ const controlButtons = computed<ControlButton[]>(() => [
             )
           ),
       ]),
-    onPress: () =>
-      launchMessages({
-        updateIsMessagesModalVisible,
-        isMessagesModalVisible: isMessagesModalVisible.value,
-      }),
+    onPress: openMessagesPanel,
     show: true,
   },
+  ...(shouldUseSidebar.value
+    ? [
+        ...(islevel.value === '2' && recordStarted.value && !recordStopped.value
+          ? [
+              {
+                name: showButtonLabels.value ? 'Recording' : undefined,
+                customComponent: () =>
+                  h(
+                    'div',
+                    {
+                      style: {
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      },
+                    },
+                    [
+                      h(
+                        'span',
+                        {
+                          style: {
+                            color: recordPaused.value ? '#facc15' : '#ef4444',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            whiteSpace: 'nowrap',
+                          },
+                        },
+                        recordingProgressTime.value,
+                      ),
+                      h(FontAwesomeIcon, {
+                        icon: recordPaused.value ? faPlayCircle : faPauseCircle,
+                        size: 'lg',
+                        color: neutralControlButtonColor.value,
+                        style: { cursor: 'pointer' },
+                        onClick: (event: MouseEvent) => {
+                          event.stopPropagation();
+                          updateRecording({
+  parameters: getCastedParameters(),
+                          });
+                        },
+                      }),
+                      h(FontAwesomeIcon, {
+                        icon: faStopCircle,
+                        size: 'lg',
+                        color: '#ef4444',
+                        style: { cursor: 'pointer' },
+                        onClick: (event: MouseEvent) => {
+                          event.stopPropagation();
+                          stopRecording({
+  parameters: getCastedParameters(),
+                          });
+                        },
+                      }),
+                    ],
+                  ),
+                onPress: () => openRecordingPanel(),
+                show: true,
+              },
+            ]
+          : []),
+        ...(islevel.value === '2' && !(recordStarted.value && !recordStopped.value)
+          ? [
+              {
+                name: showButtonLabels.value ? 'Record' : undefined,
+                icon: faRecordVinyl,
+                active: false,
+                onPress: () => openRecordingPanel(),
+                activeColor: '#ef4444',
+                inActiveColor: neutralControlButtonColor.value,
+                show: true,
+              },
+            ]
+          : []),
+        {
+          name: showButtonLabels.value ? 'Media' : undefined,
+          icon: faCog,
+          active: false,
+          onPress: () => openMediaSettingsPanel(),
+          activeColor: activeNeutralControlButtonColor.value,
+          inActiveColor: neutralControlButtonColor.value,
+          show: true,
+        },
+        {
+          name: showButtonLabels.value ? 'Display' : undefined,
+          icon: faDesktop,
+          active: false,
+          onPress: () => openDisplaySettingsPanel(),
+          activeColor: activeNeutralControlButtonColor.value,
+          inActiveColor: neutralControlButtonColor.value,
+          show: true,
+        },
+        ...((islevel.value === '2' || youAreCoHost.value)
+          ? [
+              {
+                name: showButtonLabels.value ? 'Requests' : undefined,
+                customComponent: () =>
+                  h('div', { style: { position: 'relative', display: 'inline-flex' } }, [
+                    h(FontAwesomeIcon, {
+                      icon: faUserPlus,
+                      size: 'lg',
+                      color: neutralControlButtonColor.value,
+                    }),
+                    requestCounter.value > 0
+                      ? h(
+                          'div',
+                          {
+                            style: {
+                              position: 'absolute',
+                              top: '-8px',
+                              right: '-8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            },
+                          },
+                          h(
+                            'div',
+                            {
+                              style: {
+                                backgroundColor: '#ef4444',
+                                borderRadius: '999px',
+                                padding: '3px 5px',
+                                minWidth: '12px',
+                                minHeight: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              },
+                            },
+                            h(
+                              'span',
+                              {
+                                style: {
+                                  color: 'white',
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  lineHeight: '1',
+                                },
+                              },
+                              requestCounter.value.toString(),
+                            ),
+                          ),
+                        )
+                      : null,
+                  ]),
+                onPress: () => openRequestsPanel(),
+                show: true,
+              },
+            ]
+          : []),
+        ...((islevel.value === '2' || polls.value.length > 0)
+          ? [
+              {
+                name: showButtonLabels.value ? 'Polls' : undefined,
+                icon: faPoll,
+                active: false,
+                onPress: () => openPollsPanel(),
+                activeColor: activeNeutralControlButtonColor.value,
+                inActiveColor: neutralControlButtonColor.value,
+                show: true,
+              },
+            ]
+          : []),
+        ...(islevel.value === '2'
+          ? [
+              {
+                name: showButtonLabels.value ? 'Rooms' : undefined,
+                icon: faUserFriends,
+                active: false,
+                onPress: () => openBreakoutRoomsPanel(),
+                activeColor: activeNeutralControlButtonColor.value,
+                inActiveColor: neutralControlButtonColor.value,
+                show: true,
+              },
+            ]
+          : []),
+      ]
+    : []),
 ]);
+
+const embeddedSidebarModalProps = computed(() => ({
+  backgroundColor: sidebarModalBackgroundColor,
+  overlayProps: sidebarOverlayProps.value,
+  contentProps: sidebarContentProps.value,
+}));
+
+const embeddedStackedSubmenuModalProps = computed(() => ({
+  ...embeddedSidebarModalProps.value,
+  closeButtonProps: {
+    style: {
+      display: 'none',
+    },
+    tabIndex: -1,
+  },
+}));
+
+const embeddedMenuModalProps = computed(() => ({
+  ...embeddedSidebarModalProps.value,
+  renderMode: 'sidebar',
+}));
+
+const renderSidebarComponent = (component: unknown, props: Record<string, unknown>): VNodeChild =>
+  h(component as Component, props);
+
+const sidebarContentNode = computed<VNodeChild>(() => {
+  const sharedProps = sidebarNavigationStack.value.length > 0
+    ? embeddedStackedSubmenuModalProps.value
+    : embeddedSidebarModalProps.value;
+  const menuProps = embeddedMenuModalProps.value;
+
+  switch (activeSidebarContent.value) {
+    case 'menu':
+      return renderSidebarComponent(ModernMenuModal, {
+        ...menuProps,
+        isDarkMode: modernMenuDarkMode.value,
+        onToggleTheme: updateModernMenuDarkMode,
+        isVisible: true,
+        onClose: closeSidebar,
+        customButtons: customMenuButtons.value,
+        roomName: roomName.value,
+        adminPasscode: adminPasscode.value,
+        islevel: islevel.value,
+        eventType: eventType.value,
+        localLink: localLink.value,
+      } as Record<string, unknown>);
+    case 'participants':
+      return renderSidebarComponent(ModernParticipantsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isParticipantsModalVisible: true,
+        onParticipantsClose: closeSidebar,
+        participantsCounter: participantsCounter.value,
+        onParticipantsFilterChange,
+        onMuteParticipants: muteParticipants,
+        onMessageParticipants: messageParticipants,
+        onRemoveParticipants: removeParticipants,
+        parameters: {
+          updateParticipants,
+          updateIsParticipantsModalVisible,
+          updateDirectMessageDetails,
+          updateStartDirectMessage,
+          updateIsMessagesModalVisible,
+          showAlert,
+          filteredParticipants: filteredParticipants.value,
+          participants: filteredParticipants.value,
+          roomName: roomName.value,
+          islevel: islevel.value,
+          member: member.value,
+          coHostResponsibility: coHostResponsibility.value,
+          coHost: coHost.value,
+          eventType: eventType.value,
+          startDirectMessage: startDirectMessage.value,
+          directMessageDetails: directMessageDetails.value,
+          socket: castedSocket.value,
+          getUpdatedAllParams: getAllParams,
+        },
+      } as Record<string, unknown>);
+    case 'messages':
+      return renderSidebarComponent(ModernMessagesModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isMessagesModalVisible: true,
+        onMessagesClose: closeSidebar,
+        messages: messages.value,
+        eventType: eventType.value,
+        member: member.value,
+        islevel: islevel.value,
+        coHostResponsibility: coHostResponsibility.value,
+        coHost: coHost.value,
+        startDirectMessage: startDirectMessage.value,
+        directMessageDetails: directMessageDetails.value,
+        updateStartDirectMessage,
+        updateDirectMessageDetails,
+        showAlert,
+        roomName: roomName.value,
+        socket: castedSocket.value,
+        chatSetting: chatSetting.value,
+      } as Record<string, unknown>);
+    case 'requests':
+      return renderSidebarComponent(ModernRequestsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isRequestsModalVisible: true,
+        onRequestClose: closeSidebar,
+        requestCounter: requestCounter.value,
+        onRequestFilterChange,
+        updateRequestList,
+        requestList: filteredRequestList.value,
+        roomName: roomName.value,
+        socket: castedSocket.value,
+        parameters: {
+          updateRequestCounter,
+          updateRequestFilter,
+          updateRequestList,
+          getUpdatedAllParams,
+        },
+      } as Record<string, unknown>);
+    case 'waiting':
+      return renderSidebarComponent(ModernWaitingModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isWaitingModalVisible: true,
+        onWaitingRoomClose: closeSidebar,
+        waitingRoomCounter: waitingRoomCounter.value,
+        onWaitingRoomFilterChange,
+        waitingRoomList: filteredWaitingRoomList.value,
+        updateWaitingList: updateWaitingRoomList,
+        roomName: roomName.value,
+        socket: castedSocket.value,
+        parameters: {
+          filteredWaitingRoomList: filteredWaitingRoomList.value,
+          getUpdatedAllParams,
+        },
+      } as Record<string, unknown>);
+    case 'coHost':
+      return renderSidebarComponent(ModernCoHostModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isCoHostModalVisible: true,
+        updateIsCoHostModalVisible,
+        onCoHostClose: closeSidebar,
+        coHostResponsibility: coHostResponsibility.value,
+        participants: participants.value,
+        currentCohost: coHost.value,
+        roomName: roomName.value,
+        showAlert,
+        updateCoHostResponsibility,
+        updateCoHost,
+        socket: castedSocket.value,
+      } as Record<string, unknown>);
+    case 'mediaSettings':
+      return renderSidebarComponent(ModernMediaSettingsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isMediaSettingsModalVisible: true,
+        onMediaSettingsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'displaySettings':
+      return renderSidebarComponent(ModernDisplaySettingsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isDisplaySettingsModalVisible: true,
+        onDisplaySettingsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'eventSettings':
+      return renderSidebarComponent(ModernEventSettingsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isEventSettingsModalVisible: true,
+        updateIsSettingsModalVisible,
+        onEventSettingsClose: closeSidebar,
+        audioSetting: audioSetting.value,
+        videoSetting: videoSetting.value,
+        screenshareSetting: screenshareSetting.value,
+        chatSetting: chatSetting.value,
+        updateAudioSetting,
+        updateVideoSetting,
+        updateScreenshareSetting,
+        updateChatSetting,
+        roomName: roomName.value,
+        socket: castedSocket.value,
+      } as Record<string, unknown>);
+    case 'recording':
+      return renderSidebarComponent(ModernRecordingModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isRecordingModalVisible: true,
+        onClose: closeSidebar,
+        startRecording,
+        confirmRecording,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'polls':
+      return renderSidebarComponent(ModernPollModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isDarkMode: modernMenuDarkMode.value,
+        isPollModalVisible: true,
+        onClose: closeSidebar,
+        member: member.value,
+        islevel: islevel.value,
+        polls: polls.value,
+        poll: poll.value,
+        socket: castedSocket.value,
+        roomName: roomName.value,
+        showAlert,
+        updateIsPollModalVisible,
+        handleCreatePoll,
+        handleEndPoll,
+        handleVotePoll,
+      } as Record<string, unknown>);
+    case 'breakoutRooms':
+      return renderSidebarComponent(ModernBreakoutRoomsModal, {
+        ...sharedProps,
+        isVisible: true,
+        renderMode: 'sidebar',
+        onBreakoutRoomsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'shareEvent':
+      return renderSidebarComponent(ModernShareEventModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isShareEventModalVisible: true,
+        onShareEventClose: closeSidebar,
+        roomName: roomName.value,
+        islevel: islevel.value,
+        adminPasscode: adminPasscode.value,
+        eventType: eventType.value,
+        localLink: localLink.value,
+      } as Record<string, unknown>);
+    case 'configureWhiteboard':
+      return renderSidebarComponent(ModernConfigureWhiteboardModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isVisible: true,
+        onConfigureWhiteboardClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'permissions':
+      return renderSidebarComponent(ModernPermissionsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isPermissionsModalVisible: true,
+        onPermissionsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'panelists':
+      return renderSidebarComponent(ModernPanelistsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isPanelistsModalVisible: true,
+        onPanelistsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    case 'translation':
+      return renderSidebarComponent(ModernTranslationSettingsModal, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isTranslationSettingsModalVisible: true,
+        onTranslationSettingsClose: closeSidebar,
+        parameters: allParameters.value,
+      } as Record<string, unknown>);
+    default:
+      return null;
+  }
+});
+
+const SidebarContentRenderer = defineComponent({
+  name: 'SidebarContentRenderer',
+  setup() {
+    return () => sidebarContentNode.value;
+  },
+});
 
 // Function to join room using socket
 async function joinRoom(data: {
@@ -4329,11 +6491,11 @@ async function join_Room({
       }
 
       if (data.isHost) {
+        youAreHost.value = true;
         islevel.value = '2';
       } else {
-        if (islevel.value !== '2') {
-          islevel.value = '1';
-        }
+        youAreHost.value = false;
+        islevel.value = '1';
       }
 
       if (data.secureCode && data.secureCode !== '') {
@@ -4391,13 +6553,19 @@ async function join_Room({
       link.value.includes('mediasfu.com') &&
       !isLocal
     ) {
-      await updateAndComplete(roomData.value!);
-      return;
+      if (roomData.value) {
+        await updateAndComplete(roomData.value);
+        return;
+      }
     }
 
     try {
       if (showAlert) {
-        showAlert({ message: data!.reason!, type: 'danger', duration: 3000 });
+        showAlert({
+          message: data?.reason ?? 'Unable to join room.',
+          type: 'danger',
+          duration: 3000,
+        });
       }
     } catch {
       // Handle error
@@ -4411,6 +6579,7 @@ async function disconnectAllSockets(consumeSockets: ConsumeSocket[]): Promise<vo
     try {
       const ip = Object.keys(socket)[0];
       if (ip && (socket)[ip]) {
+        (socket)[ip].removeAllListeners?.();
         (socket)[ip].disconnect();
       }
     } catch (error) {
@@ -4455,6 +6624,72 @@ const clearCanvasElement = (canvas: HTMLCanvasElement | null | undefined) => {
   }
 };
 
+const closeProducerInstance = (producer: Producer | null | undefined) => {
+  if (!producer) {
+    return;
+  }
+
+  try {
+    if (!producer.closed) {
+      producer.close();
+    }
+  } catch (error) {
+    console.log('error closing producer', error);
+  }
+};
+
+const closeTransportInstance = (transport: Transport | null | undefined) => {
+  if (!transport) {
+    return;
+  }
+
+  try {
+    if (!transport.closed) {
+      transport.close();
+    }
+  } catch (error) {
+    console.log('error closing transport', error);
+  }
+};
+
+const disconnectSocketInstance = (
+  targetSocket: MediaSFUSocket | null | undefined,
+  label: string,
+) => {
+  if (!targetSocket?.connected) {
+    return;
+  }
+
+  try {
+    targetSocket.removeAllListeners?.();
+    targetSocket.disconnect();
+  } catch (error) {
+    console.log(`error disconnecting ${label}`, error);
+  }
+};
+
+const resetExtendedRoomState = () => {
+  permissionConfig.value = null;
+  translationSupported.value = false;
+  translationConfig.value = null;
+  isPersonalTranslation.value = false;
+  mySpokenLanguage.value = 'en';
+  mySpokenLanguageEnabled.value = false;
+  myDefaultOutputLanguage.value = null;
+  myDefaultListenLanguage.value = null;
+  listenPreferences.value = new Map();
+  translationProducerMap.value = {};
+  activeTranslationProducerIds.value = new Set();
+  availableTranslationChannels.value = new Map();
+  participantTranslationStates.value = new Map();
+  transcripts.value = [];
+  liveSubtitleState.setLiveSubtitles(new Map());
+  speakerTranslationStates.value = new Map();
+  translationStreams.value = emptyRenderableList();
+  clearTranslationPlaybackPriming();
+  clearOriginalAudioSilenceRetries();
+};
+
 const resetRuntimeArtifacts = () => {
   stopMediaStreamTracks(localStream.value);
   stopMediaStreamTracks(localStreamAudio.value);
@@ -4494,8 +6729,13 @@ const resetRuntimeArtifacts = () => {
 
 // Function to close and reset
 async function closeAndReset() {
+  updateActiveSidebarContent('none');
+
   updateIsMessagesModalVisible(false);
   updateIsParticipantsModalVisible(false);
+  updateIsPermissionsModalVisible(false);
+  updateIsPanelistsModalVisible(false);
+  updateIsTranslationSettingsModalVisible(false);
   updateIsWaitingModalVisible(false);
   updateIsRequestsModalVisible(false);
   updateIsCoHostModalVisible(false);
@@ -4505,9 +6745,40 @@ async function closeAndReset() {
   updateIsMenuModalVisible(false);
   updateIsShareEventModalVisible(false);
   updateIsConfirmExitModalVisible(false);
+
+  closeProducerInstance(videoProducer.value);
+  closeProducerInstance(localVideoProducer.value);
+  closeProducerInstance(audioProducer.value);
+  closeProducerInstance(localAudioProducer.value);
+  closeProducerInstance(screenProducer.value);
+  closeProducerInstance(localScreenProducer.value);
+
+  for (const transport of consumerTransports.value) {
+    try {
+      transport.consumer?.close?.();
+      closeTransportInstance(transport.consumerTransport as Transport | null | undefined);
+    } catch (error) {
+      console.log('error closing consumer transport', error);
+    }
+  }
+  consumerTransports.value = [];
+  consumingTransports.value = [];
+
+  closeTransportInstance(producerTransport.value);
+  closeTransportInstance(localProducerTransport.value);
+  transportCreated.value = false;
+  localTransportCreated.value = false;
+  transportCreatedVideo.value = false;
+  transportCreatedAudio.value = false;
+  transportCreatedScreen.value = false;
   
   await disconnectAllSockets(consume_sockets.value);
+  consume_sockets.value = [];
+  disconnectSocketInstance(socket.value, 'main socket');
+  disconnectSocketInstance(localSocket.value, 'local socket');
+  device.value = null;
   await updateStatesToInitialValues();
+  resetExtendedRoomState();
   
   meetingProgressTime.value = '00:00:00';
   meetingElapsedTime.value = 0;
@@ -4528,6 +6799,9 @@ async function closeAndReset() {
   setTimeout(async function () {
     validated.value = false;
     resetRuntimeArtifacts();
+    if (returnUI.value && typeof window !== 'undefined') {
+      window.location.reload();
+    }
   }, 500);
 
   try {
@@ -4578,6 +6852,8 @@ async function connect_Socket(
 
       socketDefault.on('allMembers', async (membersData: AllMembersData) => {
         if (membersData) {
+          syncSpeakerTranslationStatesFromMembers(membersData.members);
+
           await allMembers({
             apiUserName: apiUser,
             apiKey: '',
@@ -4591,11 +6867,17 @@ async function connect_Socket(
             parameters: getCastedParameters(),
             consume_sockets: consume_sockets.value,
           });
+
+          window.setTimeout(() => {
+            void pauseTranslatedOriginalsForMembers(membersData.members);
+          }, 2000);
         }
       });
 
       socketDefault.on('allMembersRest', async (membersData: AllMembersRestData) => {
         if (membersData) {
+          syncSpeakerTranslationStatesFromMembers(membersData.members);
+
           await allMembersRest({
             apiUserName: apiUser,
             apiKey: '',
@@ -4609,6 +6891,10 @@ async function connect_Socket(
             parameters: getCastedParameters(),
             consume_sockets: consume_sockets.value,
           });
+
+          window.setTimeout(() => {
+            void pauseTranslatedOriginalsForMembers(membersData.members);
+          }, 2000);
         }
       });
 
@@ -4870,6 +7156,361 @@ async function connect_Socket(
           // Handle error
         }
       });
+
+      socketDefault.on('panelistsUpdated', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        const incoming = Array.isArray(payload.panelists) ? payload.panelists : [];
+        const normalized = incoming.map((p) => {
+          const panelist = p && typeof p === 'object' ? (p as Record<string, unknown>) : {};
+          return {
+            id: (panelist.id as string) ?? (panelist.name as string) ?? '',
+            name: (panelist.name as string) ?? '',
+          audioID: '',
+          videoID: '',
+          };
+        }) as Participant[];
+        updatePanelists(normalized);
+      });
+
+      socketDefault.on('panelistFocusChanged', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        const focusEnabled = !!payload.focusEnabled;
+        const incoming = Array.isArray(payload.panelists) ? payload.panelists : [];
+        const normalized = incoming.map((p) => {
+          const panelist = p && typeof p === 'object' ? (p as Record<string, unknown>) : {};
+          return {
+            id: (panelist.id as string) ?? (panelist.name as string) ?? '',
+            name: (panelist.name as string) ?? '',
+          audioID: '',
+          videoID: '',
+          };
+        }) as Participant[];
+
+        const focusChanged = panelistsFocused.value !== focusEnabled;
+        const previousIds = panelists.value.map((p) => p.id).sort().join(',');
+        const currentIds = normalized.map((p) => p.id).sort().join(',');
+        const panelistsChanged = previousIds !== currentIds;
+
+        updatePanelistsFocused(focusEnabled);
+        updateMuteOthersMic(!!payload.muteOthersMic);
+        updateMuteOthersCamera(!!payload.muteOthersCamera);
+        updatePanelists(normalized);
+
+        if (focusChanged || panelistsChanged) {
+          await onScreenChanges({
+            parameters: getCastedParameters(),
+          });
+        }
+      });
+
+      socketDefault.on('addedAsPanelist', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        showAlert({
+          message: (payload.message as string) || 'You have been added as a panelist',
+          type: 'success',
+        });
+      });
+
+      socketDefault.on('removedFromPanelists', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        showAlert({
+          message: (payload.message as string) || 'You have been removed from panelists',
+          type: 'info',
+        });
+      });
+
+      const handleControlMedia = async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        const type = payload.type as string | undefined;
+        const action = payload.action as string | undefined;
+        const reason = payload.reason as string | undefined;
+
+        if (action === 'mute') {
+          if (type === 'audio' && audioAlreadyOn.value) {
+            await clickAudio({ parameters: getCastedParameters() });
+          } else if (type === 'video' && videoAlreadyOn.value) {
+            await clickVideo({ parameters: getCastedParameters() });
+          }
+
+          if (reason) {
+            showAlert({
+              message: `Your ${type === 'audio' ? 'microphone' : 'camera'} has been muted. ${reason}`,
+              type: 'info',
+            });
+          }
+        }
+      };
+
+      socketDefault.on('controlMedia', handleControlMedia);
+      socketDefault.on('receiveControlMedia', handleControlMedia);
+
+      socketDefault.on('permissionUpdated', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        if (payload.newLevel) {
+          islevel.value = payload.newLevel as string;
+          youAreHost.value = payload.newLevel === '2';
+        }
+        if (payload.message) {
+          showAlert({
+            message: payload.message as string,
+            type: payload.newLevel === '1' ? 'success' : 'info',
+          });
+        }
+      });
+
+      socketDefault.on('permissionConfigUpdated', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        if (payload.config) {
+          updatePermissionConfig(payload.config as PermissionConfig);
+        }
+      });
+
+      socketDefault.on('translation:roomConfig', async (data: unknown) => {
+        const payload = data && typeof data === 'object'
+          ? data as { config?: TranslationRoomConfig }
+          : {};
+
+        await translationRoomConfig({
+          data: data as { config: TranslationRoomConfig },
+          updateTranslationConfig,
+          updateTranslationSupported,
+        });
+
+        if (
+          payload.config
+          && payload.config.supportTranslation !== true
+          && props.canUsePersonalTranslation
+          && props.personalTranslationUsername
+        ) {
+          socketDefault.emit(
+            'requestPersonalTranslation',
+            {
+              roomName: roomName.value,
+              username: props.personalTranslationUsername,
+            },
+            (response: { success?: boolean; error?: string }) => {
+              if (response?.success !== true && response?.error) {
+                console.log('[PersonalTranslation] Request denied:', response.error);
+              }
+            }
+          );
+        }
+      });
+
+      socketDefault.on('translation:configUpdated', async (data: unknown) => {
+        await translationConfigUpdated({
+          data: data as { config: TranslationRoomConfig },
+          updateTranslationConfig,
+          showAlert,
+        });
+      });
+
+      socketDefault.on('personalTranslationConfig', async (data: unknown) => {
+        const payload = data && typeof data === 'object'
+          ? data as {
+              supportTranslation?: boolean;
+              translationConfig?: TranslationRoomConfig;
+              isPersonalTranslation?: boolean;
+            }
+          : {};
+
+        if (payload.supportTranslation && payload.translationConfig) {
+          updateTranslationConfig(payload.translationConfig);
+          isPersonalTranslation.value = payload.isPersonalTranslation === true;
+
+          if (payload.isPersonalTranslation === true) {
+            showAlert?.({
+              message: 'Personal translation activated with your account credits',
+              type: 'success',
+              duration: 3000,
+            });
+          }
+        }
+      });
+
+      socketDefault.on('translation:languageSet', async (data: unknown) => {
+        await translationLanguageSet({
+          data: data as { success: boolean; language: string; enabled: boolean; error?: string },
+          updateMySpokenLanguage,
+          updateMySpokenLanguageEnabled,
+          showAlert,
+        });
+      });
+
+      socketDefault.on('translation:subscribed', async (data: unknown) => {
+        const rawPayload = data as Partial<TranslationSubscribedData>;
+        const payload: TranslationSubscribedData = {
+          speakerId: rawPayload.speakerId ?? '',
+          speakerName: rawPayload.speakerName,
+          language: rawPayload.language ?? '',
+          channelCreated: rawPayload.channelCreated ?? false,
+          producerId: rawPayload.producerId,
+          originalProducerId: rawPayload.originalProducerId,
+        };
+
+        await translationSubscribed({
+          data: payload,
+          updateListenPreferences,
+          updateTranslationProducerMap,
+          startConsumingTranslation: payload.producerId
+            ? async (producerId: string, speakerId: string, language: string) => {
+                await startConsumingTranslation(
+                  producerId,
+                  speakerId,
+                  language,
+                  payload.originalProducerId,
+                );
+              }
+            : undefined,
+          showAlert,
+        });
+      });
+
+      socketDefault.on('translation:unsubscribed', async (data: unknown) => {
+        const rawPayload = data as Partial<TranslationUnsubscribedData>;
+
+        await translationUnsubscribed({
+          data: {
+            speakerId: rawPayload.speakerId ?? '',
+            language: rawPayload.language ?? '',
+            channelClosed: rawPayload.channelClosed ?? true,
+          },
+          updateListenPreferences,
+          stopConsumingTranslation: stopConsumingTranslationSelection,
+        });
+      });
+
+      socketDefault.on('translation:producerReady', async (data: unknown) => {
+        const payload = data as Partial<TranslationProducerReadyData>;
+
+        if (!payload.speakerId || !payload.language || !payload.producerId || !payload.originalProducerId) {
+          return;
+        }
+
+        await translationProducerReady({
+          data: {
+            speakerId: payload.speakerId,
+            speakerName: payload.speakerName,
+            language: payload.language,
+            producerId: payload.producerId,
+            originalProducerId: payload.originalProducerId,
+          },
+          updateTranslationProducerMap,
+          startConsumingTranslation,
+          pauseOriginalProducer: async (originalProducerId: string) => {
+            await pauseOriginalTranslationProducer(
+              originalProducerId,
+              payload.speakerId,
+            );
+          },
+        });
+      });
+
+      socketDefault.on('translation:producerClosed', async (data: unknown) => {
+        const payload = data as Partial<TranslationProducerClosedData>;
+
+        if (!payload.speakerId || !payload.language || !payload.producerId) {
+          return;
+        }
+
+        await translationProducerClosed({
+          data: {
+            speakerId: payload.speakerId,
+            language: payload.language,
+            producerId: payload.producerId,
+            reason: payload.reason,
+          },
+          updateTranslationProducerMap,
+          stopConsumingTranslation: stopConsumingTranslationProducer,
+          resumeOriginalProducer: async (speakerId: string) => {
+            const originalProducerId = resolveOriginalProducerIdForSpeaker(speakerId);
+            if (!originalProducerId) return;
+
+            await resumeOriginalTranslationProducer(originalProducerId, speakerId);
+          },
+          showAlert,
+        });
+      });
+
+      socketDefault.on('translation:channelsAvailable', async (data: unknown) => {
+        await translationChannelsAvailable({
+          data: data as { speakerId: string; languages: string[]; originalProducerId: string },
+          updateAvailableTranslationChannels,
+          myDefaultListenLanguage: myDefaultListenLanguage.value,
+          socket: socketDefault,
+          roomName: roomName.value,
+        });
+      });
+
+      socketDefault.on('translation:memberState', async (data: unknown) => {
+        const payload = data as Partial<TranslationMemberStateData>;
+
+        if (!payload.memberId || typeof payload.state !== 'object' || payload.state === null) {
+          return;
+        }
+
+        await translationMemberState({
+          data: {
+            memberId: payload.memberId,
+            memberName: payload.memberName,
+            state: payload.state as TranslationMemberStateData['state'],
+          },
+          updateParticipantTranslationState,
+        });
+      });
+
+      socketDefault.on('translation:error', async (data: unknown) => {
+        await translationError({
+          data: data as { error: string; code?: string; availableChannels?: string[]; maxChannels?: number; message?: string },
+          showAlert,
+        });
+      });
+
+      socketDefault.on('translation:transcript', async (data: unknown) => {
+        const transcriptData = data as TranslationTranscriptData;
+
+        await translationTranscript({
+          data: transcriptData,
+          updateTranscripts,
+        });
+
+        if (transcriptData.speakerId) {
+          scheduleTranslationPlaybackPriming(transcriptData.speakerId);
+        }
+
+        updateLiveSubtitleFromTranscript(transcriptData);
+      });
+
+      socketDefault.on('translation:speakerOutputChanged', async (data: unknown) => {
+        await translationSpeakerOutputChanged({
+          data: data as {
+            speakerId: string;
+            speakerName: string;
+            inputLanguage: string;
+            outputLanguage: string | null;
+            originalProducerId: string;
+            enabled: boolean;
+          },
+          pauseOriginalProducer: pauseOriginalTranslationProducer,
+          resumeOriginalProducer: resumeOriginalTranslationProducer,
+          stopConsumingTranslationForSpeaker,
+          updateSpeakerTranslationState,
+          showAlert,
+        });
+      });
+
+      socketDefault.on('translation:speakerDisabled', async (data: unknown) => {
+        const payload = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+        const speakerId = payload.speakerId as string | undefined;
+        if (!speakerId) return;
+
+        const originalProducerId = resolveOriginalProducerIdForSpeaker(speakerId);
+        if (!originalProducerId) return;
+
+        await stopConsumingTranslationForSpeaker(speakerId);
+        await resumeOriginalTranslationProducer(originalProducerId, speakerId);
+        updateSpeakerTranslationState(speakerId, null, originalProducerId);
+      });
     }
 
     if (skipSockets) {
@@ -4886,7 +7527,6 @@ async function connect_Socket(
         socketAlt.off(event);
       });
     }
-
     socketAlt.on('roomRecordParams', async ({ recordParams }: { recordParams: RecordParams }) => {
       await roomRecordParams({
         recordParams,
@@ -5157,6 +7797,237 @@ watch(mainHeightWidth, (newValue, oldValue) => {
 </script>
 
 <style scoped>
+.mediasfu-modern-sidebar-shell {
+  height: 100%;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 300ms ease-in-out;
+  background: transparent;
+}
+
+.mediasfu-modern-sidebar-modal-shell {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.mediasfu-modern-sidebar-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ms-sidebar-panel-top, rgba(15, 23, 42, 0.98)) 0%, var(--ms-sidebar-panel-bottom, rgba(30, 41, 59, 0.95)) 100%);
+  border-left: 1px solid var(--ms-sidebar-border, rgba(255, 255, 255, 0.12));
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.34);
+  color: var(--ms-modern-text-primary, #f8fafc);
+}
+
+.mediasfu-modern-sidebar-modal-panel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ms-sidebar-panel-top, rgba(15, 23, 42, 0.98)) 0%, var(--ms-sidebar-panel-bottom, rgba(30, 41, 59, 0.95)) 100%);
+  border-left: 1px solid var(--ms-sidebar-border, rgba(255, 255, 255, 0.12));
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.34);
+  color: var(--ms-modern-text-primary, #f8fafc);
+  animation: mediasfuModernSidebarSlideIn 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.mediasfu-modern-sidebar-backbar {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ms-sidebar-border, rgba(255, 255, 255, 0.1));
+  background: var(--ms-sidebar-backbar-bg, rgba(15, 23, 42, 0.5));
+}
+
+.mediasfu-modern-sidebar-back,
+.mediasfu-modern-sidebar-close {
+  cursor: pointer;
+}
+
+.mediasfu-modern-sidebar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #22c55e;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mediasfu-modern-sidebar-back:hover {
+  background: var(--ms-sidebar-button-bg, rgba(255, 255, 255, 0.1));
+}
+
+.mediasfu-modern-sidebar-back-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mediasfu-modern-sidebar-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: var(--ms-sidebar-button-bg, rgba(255, 255, 255, 0.1));
+  color: var(--ms-sidebar-button-text, var(--ms-modern-text-primary, #f8fafc));
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mediasfu-modern-sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mediasfu-modern-sidebar-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+@keyframes mediasfuModernSidebarSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+:deep(.mediasfu-modern-sidebar-embedded-overlay) {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: auto !important;
+}
+
+:deep(.mediasfu-modern-sidebar-embedded-content) {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.modal-header) {
+  margin: 0 !important;
+  padding: 0 0 16px !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.modal-body) {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep([class^='btn-close']) {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--ms-sidebar-button-border, rgba(148, 163, 184, 0.14)) !important;
+  background: var(--ms-sidebar-button-bg, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--ms-sidebar-button-text, var(--ms-modern-text-primary, #f8fafc)) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings-overlay) {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings) {
+  position: relative !important;
+  width: 100% !important;
+  max-height: none !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__header) {
+  padding: 0 0 16px !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__content),
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__footer) {
+  padding: 0 !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__option),
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__toggle-row) {
+  border-color: var(--ms-modern-panel-border) !important;
+  background: var(--ms-modern-panel-surface) !important;
+  box-shadow: none !important;
+}
+
+.mediasfu-modern-sidebar-panel :deep(.ms-modern-display-settings__close) {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--ms-sidebar-button-border, rgba(148, 163, 184, 0.14)) !important;
+  background: var(--ms-sidebar-button-bg, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--ms-sidebar-button-text, var(--ms-modern-text-primary, #f8fafc)) !important;
+  box-shadow: none !important;
+}
+
 .MediaSFU .modal-header {
   display: flex;
   justify-content: space-between;

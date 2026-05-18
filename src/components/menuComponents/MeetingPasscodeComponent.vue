@@ -52,17 +52,42 @@
 -->
 <template>
   <div class="form-group">
-    <label class="label">Event Passcode (Host):</label>
-    <input
-      class="disabled-input"
-      :value="props.meetingPasscode"
-      readonly
-    />
+    <label class="label">Host Passcode:</label>
+    <div class="input-container">
+      <input
+        class="disabled-input"
+        :value="displayValue"
+        readonly
+        aria-label="Host passcode"
+      />
+      <button
+        class="copy-button"
+        aria-label="Toggle host passcode visibility"
+        @click="toggleVisibility"
+      >
+        <font-awesome-icon
+          :icon="isVisible ? faEyeSlash : faEye"
+          :style="{ fontSize: '18px', color: 'var(--ms-modern-text-primary, #0F0F10FF)' }"
+        />
+      </button>
+      <button
+        class="copy-button"
+        aria-label="Copy host passcode"
+        @click="handleCopy"
+      >
+        <font-awesome-icon
+          :icon="isCopied ? faCheck : faCopy"
+          :style="{ fontSize: '18px', color: isCopied ? '#4CAF50' : 'var(--ms-modern-text-primary, #0F0F10FF)' }"
+        />
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineOptions } from 'vue';
+import { computed, defineOptions, ref } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faCheck, faCopy, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 
 defineOptions({
   name: 'MeetingPasscodeComponent'
@@ -86,28 +111,80 @@ export interface MeetingPasscodeComponentProps {
 const props = withDefaults(defineProps<MeetingPasscodeComponentProps>(), {
   meetingPasscode: '',
 });
+
+const isCopied = ref(false);
+const isVisible = ref(false);
+
+const displayValue = computed(() => {
+  if (isVisible.value) {
+    return props.meetingPasscode;
+  }
+
+  return props.meetingPasscode ? '\u2022'.repeat(props.meetingPasscode.length) : '';
+});
+
+const toggleVisibility = () => {
+  isVisible.value = !isVisible.value;
+};
+
+const handleCopy = async () => {
+  try {
+    await navigator.clipboard.writeText(props.meetingPasscode || '');
+    isCopied.value = true;
+    setTimeout(() => {
+      isCopied.value = false;
+    }, 2000);
+  } catch {
+    // do nothing
+  }
+};
 </script>
 
 <style scoped>
 .form-group {
   margin-top: 10px;
   max-width: 300px;
+  width: 100%;
+  margin-bottom: 10px;
 }
 
 .label {
   font-weight: bold;
   display: block;
   margin-bottom: 5px;
+  color: var(--ms-modern-text-primary, #000000);
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
 }
 
 .disabled-input {
-  border: 1px solid gray;
+  flex: 1;
+  border: 1px solid var(--ms-modern-field-border, gray);
   padding: 10px;
-  margin-top: 5px;
-  background-color: #f0f0f0;
-  color: black;
-  width: 100%;
+  background-color: var(--ms-modern-field-background, #f0f0f0);
+  color: var(--ms-modern-text-primary, black);
   border-radius: 5px;
   box-sizing: border-box;
+  margin-right: 5px;
+}
+
+.copy-button {
+  padding: 10px;
+  border: none;
+  background-color: transparent;
+  color: var(--ms-modern-text-primary, #0F0F10FF);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.copy-button:hover {
+  opacity: 0.8;
+  background-color: var(--ms-modern-field-background, rgba(15, 23, 42, 0.08));
 }
 </style>

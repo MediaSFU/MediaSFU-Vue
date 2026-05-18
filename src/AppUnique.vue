@@ -97,6 +97,16 @@ const enableModalOverrides = true;
 // const enableNoUIPreJoin = false; // Reserved for future pre-join options
 // const enableDebugPanel = false; // Reserved for future debug panel
 
+const mediasfuApiUserName = import.meta.env.VITE_MEDIASFU_API_USERNAME?.trim() || '';
+const mediasfuApiKey = import.meta.env.VITE_MEDIASFU_API_KEY?.trim() || '';
+const mediasfuLocalLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK?.trim() || '';
+
+const cloudCredentials = {
+  apiUserName: mediasfuApiUserName,
+  apiKey: mediasfuApiKey,
+} as const;
+const hasCloudCredentials = mediasfuApiUserName !== '' && mediasfuApiKey !== '';
+
 // -----------------------------------------------------------------------------
 // Connection Presets
 // -----------------------------------------------------------------------------
@@ -109,24 +119,18 @@ const connectionPresets: Record<
   }
 > = {
   cloud: {
-    credentials: {
-      apiUserName: 'your_api_username',
-      apiKey: 'your_api_key',
-    },
+    credentials: cloudCredentials,
     localLink: '',
-    connectMediaSFU: true,
+    connectMediaSFU: hasCloudCredentials,
   },
   hybrid: {
-    credentials: {
-      apiUserName: 'your_api_username',
-      apiKey: 'your_api_key',
-    },
-    localLink: 'http://localhost:3000',
-    connectMediaSFU: true,
+    credentials: cloudCredentials,
+    localLink: mediasfuLocalLink,
+    connectMediaSFU: hasCloudCredentials || mediasfuLocalLink !== '',
   },
   ce: {
     credentials: undefined,
-    localLink: 'http://localhost:3000',
+    localLink: mediasfuLocalLink,
     connectMediaSFU: false,
   },
 };

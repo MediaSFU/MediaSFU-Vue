@@ -55,7 +55,7 @@
 -->
 <template>
   <div class="form-group">
-    <label class="label">Event ID:</label>
+    <label class="label">Meeting ID:</label>
     <div class="input-container">
       <input
         class="disabled-input"
@@ -70,7 +70,7 @@
       >
         <font-awesome-icon
           :icon="faCopy"
-          :style="{ fontSize: '20px', color: isCopied ? '#4CAF50' : '#0F0F10FF' }"
+          :style="{ fontSize: '20px', color: isCopied ? '#4CAF50' : 'var(--ms-modern-text-primary, #0F0F10FF)' }"
         />
       </button>
     </div>
@@ -135,7 +135,7 @@ const handleCopy = async () => {
 .label {
   font-weight: bold;
   font-size: 16px;
-  color: #000000;
+  color: var(--ms-modern-text-primary, #000000);
   margin-bottom: 5px;
   display: block;
 }
@@ -147,10 +147,10 @@ const handleCopy = async () => {
 
 .disabled-input {
   flex: 1;
-  border: 1px solid gray;
+  border: 1px solid var(--ms-modern-field-border, gray);
   padding: 10px;
-  background-color: #f0f0f0;
-  color: black;
+  background-color: var(--ms-modern-field-background, #f0f0f0);
+  color: var(--ms-modern-text-primary, black);
   border-radius: 5px;
   font-size: 16px;
   margin-right: 5px;
@@ -160,13 +160,16 @@ const handleCopy = async () => {
   padding: 10px;
   border: none;
   background-color: transparent;
+  color: var(--ms-modern-text-primary, #0F0F10FF);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
 }
 
 .copy-button:hover {
   opacity: 0.8;
+  background-color: var(--ms-modern-field-background, rgba(15, 23, 42, 0.08));
 }
 </style>

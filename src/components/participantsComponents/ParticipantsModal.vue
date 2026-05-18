@@ -452,6 +452,11 @@ const contentClassName = computed(() =>
   joinClassNames(['mediasfu-participants-modal__content', props.contentProps?.class as string])
 )
 
+const resolvedTitle = computed<VNodeChild>(() => {
+  const title = props.title as unknown;
+  return title === false || title == null ? 'Participants' : props.title;
+})
+
 // Main overlay node
 const overlayNode = computed(() => {
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'xl' })
@@ -469,7 +474,7 @@ const overlayNode = computed(() => {
       Object.entries(props.titleProps).filter(([key]) => !['class', 'style'].includes(key))
     ) : {})
   }, [
-    typeof props.title === 'string' || typeof props.title === 'number' ? props.title : props.title,
+    resolvedTitle.value,
     h('div', {
       class: joinClassNames(['participants-counter', props.badgeWrapperProps?.class as string]),
       style: {
@@ -632,6 +637,7 @@ const overlayNode = computed(() => {
             class: joinClassNames([props.attendeeListProps?.class as string]),
             style: { ...(props.attendeeListProps?.style as CSSProperties || {}) },
             participants: participant_s.value,
+            isBroadcast: eventType.value === 'broadcast',
             coHost: coHost.value,
             member: member.value,
             ...(props.attendeeListProps ? Object.fromEntries(

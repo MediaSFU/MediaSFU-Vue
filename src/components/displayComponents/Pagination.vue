@@ -82,7 +82,7 @@ import { faStar, faLock } from '@fortawesome/free-solid-svg-icons';
 import {
   generatePageContent,
   type GeneratePageContentOptions,
-} from '@legacy/consumers/generatePageContent';
+} from 'mediasfu-shared';
 import type { Socket } from 'socket.io-client';
 import type { ShowAlert, BreakoutParticipant } from '../../../../SharedTypes';
 
@@ -239,9 +239,14 @@ export interface PaginationProps {
   
   /**
    * Background color for buttons
-   * @default "#ffffff"
    */
   backgroundColor?: string;
+
+  /**
+   * Whether pagination should render in dark mode.
+   * Falls back to parameters.isDarkModeValue when omitted.
+   */
+  isDarkMode?: boolean;
   
   /**
    * Height of pagination controls in pixels
@@ -294,9 +299,10 @@ const props = withDefaults(defineProps<PaginationProps>(), {
   location: 'middle',
   direction: 'horizontal',
   buttonsContainerStyle: undefined,
-  activePageStyle: () => ({ backgroundColor: '#2c678f' }),
+  activePageStyle: undefined,
   inactivePageStyle: undefined,
-  backgroundColor: '#ffffff',
+  backgroundColor: undefined,
+  isDarkMode: undefined,
   paginationHeight: 40,
   showAspect: true,
   containerProps: () => ({}),
@@ -342,19 +348,38 @@ function joinClassNames(...classes: (string | string[] | undefined)[]): string[]
 
 const pages = computed(() => Array.from({ length: props.totalPages + 1 }, (_, index) => index));
 
-const params = computed(() => props.parameters.getUpdatedAllParams());
+const getLatestParameters = (): PaginationParameters => {
+  try {
+    return props.parameters.getUpdatedAllParams?.() ?? props.parameters;
+  } catch {
+    return props.parameters;
+  }
+};
 
-const mainRoomsLength = computed(() => props.parameters.mainRoomsLength);
-const memberRoom = computed(() => props.parameters.memberRoom);
-const breakOutRoomStarted = computed(() => props.parameters.breakOutRoomStarted);
-const breakOutRoomEnded = computed(() => props.parameters.breakOutRoomEnded);
-const member = computed(() => props.parameters.member);
-const breakoutRooms = computed(() => props.parameters.breakoutRooms);
-const hostNewRoom = computed(() => props.parameters.hostNewRoom);
-const roomName = computed(() => props.parameters.roomName);
-const islevel = computed(() => props.parameters.islevel);
-const showAlert = computed(() => props.parameters.showAlert);
-const socket = computed(() => props.parameters.socket);
+const params = computed(() => getLatestParameters());
+const resolvedIsDarkMode = computed(() => props.isDarkMode ?? params.value.isDarkModeValue ?? true);
+
+const mainRoomsLength = computed(() => params.value.mainRoomsLength);
+const memberRoom = computed(() => params.value.memberRoom);
+const breakOutRoomStarted = computed(() => params.value.breakOutRoomStarted);
+const breakOutRoomEnded = computed(() => params.value.breakOutRoomEnded);
+const member = computed(() => params.value.member);
+const breakoutRooms = computed(() => params.value.breakoutRooms);
+const hostNewRoom = computed(() => params.value.hostNewRoom);
+const roomName = computed(() => params.value.roomName);
+const islevel = computed(() => params.value.islevel);
+const showAlert = computed(() => params.value.showAlert);
+const socket = computed(() => params.value.socket);
+
+const defaultActivePageStyle = computed<CSSProperties>(() => ({
+  backgroundColor: resolvedIsDarkMode.value ? 'rgba(255, 255, 255, 0.16)' : 'rgba(15, 23, 42, 0.14)',
+  borderRadius: '10px',
+}));
+
+const defaultInactivePageStyle = computed<CSSProperties>(() => ({
+  backgroundColor: resolvedIsDarkMode.value ? 'transparent' : 'rgba(15, 23, 42, 0.05)',
+  borderRadius: '10px',
+}));
 
 const getDisplayContent = (item: number) => {
   const roomNumber = item - (mainRoomsLength.value - 1);
@@ -458,7 +483,9 @@ const containerClassNames = computed(() =>
 );
 
 const containerStyle = computed(() => ({
-  backgroundColor: props.backgroundColor,
+  backgroundColor:
+    props.backgroundColor ??
+    (resolvedIsDarkMode.value ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255, 255, 255, 0.78)'),
   justifyContent:
     props.position === 'middle'
       ? 'space-evenly'
@@ -479,6 +506,13 @@ const containerStyle = computed(() => ({
   maxHeight: props.direction === 'horizontal' ? `${props.paginationHeight}px` : '100%',
   maxWidth: props.direction === 'horizontal' ? '100%' : `${props.paginationHeight}px`,
   flexDirection: props.direction === 'vertical' ? ('column' as const) : ('row' as const),
+  borderRadius: '12px',
+  border: `1px solid ${resolvedIsDarkMode.value ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.26)'}`,
+  boxShadow: resolvedIsDarkMode.value
+    ? '0 8px 20px rgba(2, 6, 23, 0.28)'
+    : '0 6px 16px rgba(15, 23, 42, 0.1)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
   ...(typeof props.containerProps?.style === 'object' ? props.containerProps.style : {}),
 } as CSSProperties));
 
@@ -509,10 +543,29 @@ const renderPageItem = (item: number): VNode => {
 
   // Base content (icon for home, text for others)
   const baseContent = isHomePage
-    ? h(FontAwesomeIcon, { icon: faStar, size: 'lg', color: isActive ? 'yellow' : 'gray' })
+    ? h(FontAwesomeIcon, {
+        icon: faStar,
+        size: 'lg',
+        color: isActive
+          ? '#facc15'
+          : resolvedIsDarkMode.value
+            ? 'rgba(255, 255, 255, 0.45)'
+            : 'rgba(15, 23, 42, 0.4)',
+      })
     : h(
         'span',
-        { class: 'pageText', style: { color: isActive ? '#ffffff' : '#000000' } },
+        {
+          class: 'pageText',
+          style: {
+            color: isActive
+              ? resolvedIsDarkMode.value
+                ? '#ffffff'
+                : '#111827'
+              : resolvedIsDarkMode.value
+                ? 'rgba(255, 255, 255, 0.92)'
+                : 'rgba(15, 23, 42, 0.92)',
+          },
+        },
         displayItem
       );
 
@@ -541,6 +594,7 @@ const renderPageItem = (item: number): VNode => {
 
   const combinedButtonStyle = {
     ...(props.buttonsContainerStyle ?? {}),
+    ...(isActive ? defaultActivePageStyle.value : defaultInactivePageStyle.value),
     ...(isActive ? props.activePageStyle : props.inactivePageStyle),
     ...(typeof buttonStyleOverrides === 'object' ? buttonStyleOverrides : {}),
   } as CSSProperties;

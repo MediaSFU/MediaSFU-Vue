@@ -25,6 +25,32 @@ const isCredentialInvalid = (apiUserName: string, apiKey: string) => {
 
 const normaliseLocalLink = (link: string) => link.replace(/\/$/, '')
 
+const DEFAULT_MEDIA_SFU_ROOM_API_URL = 'https://mediasfu.com/v1/rooms/'
+
+const normaliseManagedRoomApi = (link: string) => {
+  const normalisedLink = normaliseLocalLink(link)
+
+  if (normalisedLink.includes('/v1/rooms')) {
+    return `${normalisedLink}/`
+  }
+
+  return `${normalisedLink}/v1/rooms/`
+}
+
+const resolveRoomApiLink = (localLink: string, action: 'createRoom' | 'joinRoom') => {
+  const trimmedLink = localLink.trim()
+
+  if (!trimmedLink) {
+    return DEFAULT_MEDIA_SFU_ROOM_API_URL
+  }
+
+  if (trimmedLink.includes('mediasfu.com')) {
+    return normaliseManagedRoomApi(trimmedLink)
+  }
+
+  return `${normaliseLocalLink(trimmedLink)}/${action}`
+}
+
 const getStorage = () => {
   if (typeof window === 'undefined' || !('localStorage' in window)) {
     return undefined
@@ -93,10 +119,7 @@ export const createRoomOnMediaSFU: CreateJoinRoomType = async ({
         return { data: { error: 'Invalid credentials' }, success: false }
       }
 
-      let finalLink = 'https://mediasfu.com/v1/rooms/'
-      if (localLink && localLink.trim() !== '' && !localLink.includes('mediasfu.com')) {
-        finalLink = `${normaliseLocalLink(localLink)}/createRoom`
-      }
+      const finalLink = resolveRoomApiLink(localLink, 'createRoom')
 
       const response = await fetch(finalLink, {
         method: 'POST',
@@ -156,10 +179,7 @@ export const joinRoomOnMediaSFU: JoinRoomOnMediaSFUType = async ({
       return { data: { error: 'Invalid credentials' }, success: false }
     }
 
-    let finalLink = 'https://mediasfu.com/v1/rooms/'
-    if (localLink && localLink.trim() !== '' && !localLink.includes('mediasfu.com')) {
-      finalLink = `${normaliseLocalLink(localLink)}/joinRoom`
-    }
+    const finalLink = resolveRoomApiLink(localLink, 'joinRoom')
 
     const response = await fetch(finalLink, {
       method: 'POST',

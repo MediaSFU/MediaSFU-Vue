@@ -410,14 +410,17 @@ const closeIconAttrs = computed(() => {
   };
 });
 
-const resolvedCloseIcon = computed(() => 
-  props.closeIcon ?? h(FontAwesomeIcon, {
-    icon: faTimes,
-    size: 'lg',
-    style: { fontSize: '20px', color: 'black', ...closeIconAttrs.value.style },
-    ...closeIconAttrs.value.rest,
-  })
-);
+const resolvedCloseIcon = computed(() => {
+  const closeIcon = props.closeIcon as unknown;
+  return closeIcon === false || closeIcon == null
+    ? h(FontAwesomeIcon, {
+        icon: faTimes,
+        size: 'lg',
+        style: { fontSize: '20px', color: 'black', ...closeIconAttrs.value.style },
+        ...closeIconAttrs.value.rest,
+      })
+    : props.closeIcon;
+});
 
 const handleCloseClick = (event: MouseEvent) => {
   if (closeButtonAttrs.value.onClick) {

@@ -235,7 +235,7 @@ const props = withDefaults(defineProps<ConfirmExitModalProps>(), {
   position: 'topRight',
   backgroundColor: '#83c0e9',
   exitEventOnConfirm: confirmExit,
-  title: 'Confirm Exit',
+  title: undefined,
   confirmLabel: undefined,
   cancelLabel: 'Cancel',
   message: undefined,
@@ -282,24 +282,31 @@ const RenderVNode = defineComponent({
 });
 
 // Default labels and message
-const defaultConfirmLabel = computed(() => 
-  props.confirmLabel ?? (props.islevel === '2' ? 'End Event' : 'Exit')
-);
+const defaultConfirmLabel = computed(() => {
+  const confirmLabel = props.confirmLabel as unknown;
+  return confirmLabel === false || confirmLabel == null
+    ? (props.islevel === '2' ? 'End Meeting' : 'Leave')
+    : props.confirmLabel;
+});
 
-const defaultCancelLabel = computed(() => 
-  props.cancelLabel ?? 'Cancel'
-);
+const defaultCancelLabel = computed(() => {
+  const cancelLabel = props.cancelLabel as unknown;
+  return cancelLabel === false || cancelLabel == null
+    ? 'Cancel'
+    : props.cancelLabel;
+});
 
 const resolvedMessage = computed(() => {
   if (typeof props.message === 'function') {
     return props.message({ islevel: props.islevel });
   }
-  if (props.message !== undefined) {
+  const message = props.message as unknown;
+  if (message !== false && message != null) {
     return props.message;
   }
   return props.islevel === '2'
-    ? 'This will end the event for all. Confirm exit.'
-    : 'Are you sure you want to exit?';
+    ? 'Are you sure you want to end the meeting for everyone?'
+    : 'Are you sure you want to leave the meeting?';
 });
 
 // Modal dimensions
@@ -434,9 +441,12 @@ const closeButtonStyle = computed<CSSProperties>(() => ({
   ...closeButtonAttrs.value.style,
 }));
 
-const defaultCloseIcon = computed(() => 
-  props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'lg' })
-);
+const defaultCloseIcon = computed(() => {
+  const closeIconComponent = props.closeIconComponent as unknown;
+  return closeIconComponent === false || closeIconComponent == null
+    ? h(FontAwesomeIcon, { icon: faTimes, size: 'lg' })
+    : props.closeIconComponent;
+});
 
 const handleCloseClick = (event: MouseEvent) => {
   if (closeButtonAttrs.value.onClick) {
@@ -637,6 +647,13 @@ const handleConfirmClick = (event: MouseEvent) => {
   handleConfirmExit();
 };
 
+const resolvedTitle = computed(() => {
+  const title = props.title as unknown;
+  return title === false || title == null
+    ? (props.islevel === '2' ? 'End Meeting' : 'Leave Meeting')
+    : props.title;
+});
+
 // Build VNodes
 const defaultHeader = computed(() => 
   h(
@@ -654,7 +671,7 @@ const defaultHeader = computed(() =>
           style: titleStyle.value,
           ...titleAttrs.value.rest,
         },
-        isVNode(props.title) ? props.title : String(props.title)
+        isVNode(resolvedTitle.value) ? resolvedTitle.value : String(resolvedTitle.value)
       ),
       h(
         'button',

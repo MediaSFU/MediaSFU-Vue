@@ -619,6 +619,11 @@ const spinnerNode = computed(() => {
   return defaultSpinner.value;
 });
 
+const resolvedTitle = computed(() => {
+  const title = props.title as unknown;
+  return title === false || title == null ? 'Are you still there?' : props.title;
+});
+
 const defaultTitle = computed(() => 
   h(
     'h2',
@@ -627,7 +632,7 @@ const defaultTitle = computed(() =>
       style: titleStyle.value,
       ...titleAttrs.value.rest,
     },
-    isVNode(props.title) ? props.title : String(props.title)
+    isVNode(resolvedTitle.value) ? resolvedTitle.value : String(resolvedTitle.value)
   )
 );
 

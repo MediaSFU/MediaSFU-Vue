@@ -9,9 +9,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [vue()],
     resolve: {
-      alias: {
-        '@legacy': path.resolve(__dirname, 'src/react-legacy/src'),
-      },
       extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.vue']
     },
     optimizeDeps: {

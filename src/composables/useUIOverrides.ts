@@ -36,10 +36,21 @@ export function resolveComponentOverride<P extends Record<string, unknown>>(
   if (override.render) {
     return {
       name: `${defaultComponent.name || 'Component'}Override`,
+      inheritAttrs: false,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      props: Object.keys((defaultComponent as any).props || {}),
-      setup(props: P) {
-        return () => override.render!(props, () => h(defaultComponent, props));
+      props: (defaultComponent as any).props,
+      setup(props: P, { attrs }) {
+        return () => {
+          const resolvedProps = {
+            ...(attrs as Record<string, unknown>),
+            ...(props as Record<string, unknown>),
+          } as P;
+
+          return override.render!(
+            resolvedProps,
+            () => h(defaultComponent, resolvedProps),
+          );
+        };
       }
     } as Component<P>;
   }

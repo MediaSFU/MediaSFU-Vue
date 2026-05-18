@@ -890,6 +890,11 @@ const contentClassName = computed(() =>
 
 // Main overlay node
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Configure Whiteboard' : props.title;
+  })();
+
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'xl' })
   const defaultAddIcon = props.addIcon ?? h(FontAwesomeIcon, { icon: faCheck })
   const defaultRemoveIcon = props.removeIcon ?? h(FontAwesomeIcon, { icon: faTimes })
@@ -904,7 +909,7 @@ const overlayNode = computed(() => {
     ...(props.titleProps ? Object.fromEntries(
       Object.entries(props.titleProps).filter(([key]) => !['class', 'style'].includes(key))
     ) : {})
-  }, typeof props.title === 'string' || typeof props.title === 'number' ? [props.title] : (props.title || []))
+  }, typeof resolvedTitle === 'string' || typeof resolvedTitle === 'number' ? [resolvedTitle] : (resolvedTitle || []))
   
   const titleNode = props.renderTitle
     ? props.renderTitle({ defaultTitle: defaultTitleNode })

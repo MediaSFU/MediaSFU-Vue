@@ -117,12 +117,61 @@
  */
 -->
 <template>
-  <div :style="{ maxHeight: '100%', backgroundColor, overflowY: 'auto' }">
-    <!-- Message rendering -->
+  <div
+    class="ms-message-panel"
+    :style="styles.panel"
+  >
+    <div
+      class="ms-message-panel__messages"
+      :style="styles.messages"
+    >
+      <div
+        v-if="showRecipientInfo"
+        :style="styles.infoBox"
+      >
+        <div :style="styles.infoBoxHeader">
+          <font-awesome-icon :icon="faUserFriends" />
+          <span>Select a recipient</span>
+        </div>
+        <p :style="styles.infoBoxText">
+          To send a direct message, reply to an existing message above or use the Participants panel message button.
+        </p>
+      </div>
+
+      <div
+        v-if="showPrivacyNotice"
+        :style="styles.privacyInfoBox"
+      >
+        <div :style="styles.privacyInfoBoxHeader">
+          <font-awesome-icon :icon="faLock" />
+          <span>Private messages</span>
+        </div>
+        <p :style="styles.infoBoxText">
+          Your direct messages are only visible to you and the host or co-host.
+        </p>
+      </div>
+
+      <div
+        v-if="messages.length === 0"
+        :style="styles.emptyState"
+      >
+        <font-awesome-icon
+          :icon="emptyStateIcon"
+          :style="styles.emptyStateIcon"
+        />
+        <span :style="styles.emptyStateTitle">
+          {{ type === 'direct' ? 'No direct messages yet' : 'No group messages yet' }}
+        </span>
+        <span :style="styles.emptyStateText">
+          {{ emptyStateHint }}
+        </span>
+      </div>
+
+      <!-- Message rendering -->
     <div
       v-for="(message, index) in messages"
       :key="index"
-      :style="{ marginBottom: '10px' }"
+      :style="styles.messageItem"
     >
       <div
         :style="{
@@ -144,8 +193,8 @@
             v-if="message.sender === username && !message.group"
             :style="{
               fontWeight: 'bold',
-              color: 'black',
-              fontSize: '8px',
+              color: 'var(--ms-message-meta-color, var(--ms-modern-text-muted, #64748b))',
+              fontSize: '0.7rem',
               marginLeft: '6px',
             }"
           >
@@ -154,14 +203,14 @@
           <span
             :style="{
               fontWeight: 'bold',
-              color: 'black',
-              fontSize: '8px',
+              color: 'var(--ms-message-meta-color, var(--ms-modern-text-muted, #64748b))',
+              fontSize: '0.7rem',
               marginRight: '10px',
             }"
           >
             {{ message.sender === username ? '' : message.sender }}
           </span>
-          <span :style="{ fontSize: '8px', color: '#999999' }">
+          <span :style="{ fontSize: '0.7rem', color: 'var(--ms-message-meta-color, var(--ms-modern-text-muted, #64748b))' }">
             {{ message.timestamp }}
           </span>
           <div
@@ -178,63 +227,100 @@
             <font-awesome-icon
               :icon="faReply"
               size="xs"
-              color="black"
+              color="var(--ms-message-meta-color, var(--ms-modern-text-muted, #64748b))"
             />
           </div>
         </div>
         <div
           :style="{
-            backgroundColor: message.sender === member ? '#DCF8C6' : '#1ce5c7',
+            background: message.sender === member
+              ? 'var(--ms-message-bubble-own, linear-gradient(135deg, var(--ms-modern-brand-primary, #6366f1) 0%, var(--ms-modern-brand-secondary, #3b82f6) 100%))'
+              : 'var(--ms-message-bubble-other, rgba(148, 163, 184, 0.14))',
             padding: '10px',
-            borderRadius: '10px',
+            borderRadius: '14px',
+            border: message.sender === member
+              ? '1px solid transparent'
+              : '1px solid var(--ms-message-bubble-border, var(--ms-modern-panel-border, rgba(148, 163, 184, 0.24)))',
+            boxShadow: message.sender === member
+              ? 'var(--ms-modern-shadow-soft, 0 12px 32px rgba(2, 8, 23, 0.22))'
+              : 'none',
           }"
         >
-          <span :style="{ color: 'black' }">{{ message.message }}</span>
+          <span
+            :style="{
+              color: message.sender === member
+                ? 'var(--ms-message-bubble-own-text, #ffffff)'
+                : 'var(--ms-message-bubble-text, var(--ms-modern-text-primary, #0f172a))',
+              lineHeight: 1.5,
+            }"
+          >{{ message.message }}</span>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- Reply info -->
     <div
       v-if="replyInfo"
+      class="ms-message-panel__reply-info"
       :style="{
+        display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        padding: '2px',
-        backgroundColor: '#e6e6e6',
-        borderRadius: '5px',
-        marginBottom: '1px',
+        gap: '4px',
+        padding: '8px 10px',
+        backgroundColor: 'var(--ms-message-reply-background, rgba(59, 130, 246, 0.08))',
+        border: '1px solid var(--ms-message-reply-border, rgba(59, 130, 246, 0.18))',
+        borderRadius: '12px',
+        marginBottom: '8px',
       }"
     >
-      <span :style="{ fontWeight: 'bold', marginRight: '2px', fontSize: '8px' }">
+      <span
+        :style="{
+          fontWeight: 'bold',
+          marginRight: '2px',
+          fontSize: '0.72rem',
+          color: 'var(--ms-message-meta-color, var(--ms-modern-text-secondary, #475569))',
+        }"
+      >
         Replying to:
       </span>
-      <span :style="{ color: 'red', fontSize: '8px' }">
+      <span
+        :style="{
+          color: 'var(--ms-modern-brand-secondary, #2563eb)',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+        }"
+      >
         {{ replyInfo.username }}
       </span>
     </div>
 
     <!-- Input area -->
     <div :style="styles.inputContainer">
-      <input
-        ref="inputRef"
-        type="text"
-        :style="styles.input"
-        :placeholder="placeholderText"
-        maxlength="350"
-        :value="messageText"
-        @input="handleTextInputChange"
-      />
-      <button
-        :style="styles.sendButton"
-        @click="handleSendButton"
-      >
-        <font-awesome-icon
-          :icon="faPaperPlane"
-          size="sm"
-          color="white"
+      <div :style="styles.inputRow">
+        <input
+          ref="inputRef"
+          type="text"
+          :style="styles.input"
+          :placeholder="placeholderText"
+          maxlength="350"
+          :value="messageText"
+          @input="handleTextInputChange"
+          @keydown.enter.prevent="handleSendButton"
         />
-      </button>
+        <button
+          :style="sendButtonStyle"
+          :disabled="!canSend"
+          @click="handleSendButton"
+        >
+          <font-awesome-icon
+            :icon="faPaperPlane"
+            size="sm"
+            color="white"
+          />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -242,7 +328,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPaperPlane, faReply } from '@fortawesome/free-solid-svg-icons';
+import { faLock, faPaperPlane, faReply, faUser, faUserFriends, faUsers } from '@fortawesome/free-solid-svg-icons';
 import type { SendMessageOptions } from 'mediasfu-shared';
 import type {
   CoHostResponsibility,
@@ -292,6 +378,9 @@ const messageText = computed(() => {
 
 const placeholderText = computed(() => {
   if (props.type === 'direct') {
+    if (senderId.value) {
+      return `Send a direct message to ${senderId.value}`;
+    }
     if (props.focusedInput && props.startDirectMessage && props.directMessageDetails) {
       return `Send a direct message to ${props.directMessageDetails.name}`;
     }
@@ -300,34 +389,161 @@ const placeholderText = computed(() => {
   return props.eventType === 'chat' ? 'Send a message' : 'Send a message to everyone';
 });
 
+const showRecipientInfo = computed(() =>
+  props.type === 'direct' && props.islevel === '2' && !senderId.value,
+);
+
+const showPrivacyNotice = computed(() =>
+  props.type === 'direct' && props.islevel !== '2',
+);
+
+const emptyStateHint = computed(() => {
+  if (props.type === 'direct') {
+    return props.islevel === '2'
+      ? 'Start a conversation from the Participants panel.'
+      : 'Reply to another participant to begin a private conversation.';
+  }
+
+  return 'Send a message to everyone in the room.';
+});
+
+const emptyStateIcon = computed(() => (props.type === 'direct' ? faUser : faUsers));
+
+const canSend = computed(() => messageText.value.trim().length > 0);
+
 const styles = {
-  inputContainer: {
+  panel: {
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: '100%',
+    height: '100%',
+    maxHeight: '100%',
+    background: props.backgroundColor ?? 'transparent',
+    color: 'var(--ms-message-text-primary, var(--ms-modern-text-primary, #0f172a))',
+  },
+  messages: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+    overflowY: 'auto' as const,
+    padding: '4px 0 16px',
+  },
+  infoBox: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '6px',
+    padding: '10px 12px',
+    borderRadius: '14px',
+    background: 'color-mix(in srgb, var(--ms-modern-brand-secondary, #3b82f6) 12%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--ms-modern-brand-secondary, #3b82f6) 24%, transparent)',
+    marginBottom: '10px',
+  },
+  privacyInfoBox: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '6px',
+    padding: '10px 12px',
+    borderRadius: '14px',
+    background: 'color-mix(in srgb, var(--ms-modern-warning, #f59e0b) 12%, transparent)',
+    border: '1px solid color-mix(in srgb, var(--ms-modern-warning, #f59e0b) 24%, transparent)',
+    marginBottom: '10px',
+  },
+  infoBoxHeader: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '10px',
+    gap: '6px',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: 'var(--ms-modern-brand-secondary, #2563eb)',
+  },
+  privacyInfoBoxHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: 'var(--ms-modern-warning, #b45309)',
+  },
+  infoBoxText: {
+    margin: 0,
+    fontSize: '0.74rem',
+    lineHeight: 1.45,
+    color: 'var(--ms-message-meta-color, var(--ms-modern-text-secondary, #475569))',
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center' as const,
+    gap: '6px',
+    flex: 1,
+    minHeight: '200px',
+    padding: '28px 16px',
+    color: 'var(--ms-message-meta-color, var(--ms-modern-text-secondary, #475569))',
+  },
+  emptyStateIcon: {
+    fontSize: '1.4rem',
+    color: 'var(--ms-message-meta-color, var(--ms-modern-text-muted, #64748b))',
+    opacity: 0.72,
+  },
+  emptyStateTitle: {
+    fontSize: '0.92rem',
+    fontWeight: 700,
+    color: 'var(--ms-message-bubble-text, var(--ms-modern-text-primary, #0f172a))',
+  },
+  emptyStateText: {
+    fontSize: '0.78rem',
+    lineHeight: 1.45,
+  },
+  messageItem: {
+    marginBottom: 0,
+  },
+  inputContainer: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px',
     marginTop: 'auto',
+    padding: '12px 0 0',
+    borderTop: '1px solid var(--ms-message-composer-border, var(--ms-modern-panel-border, rgba(148, 163, 184, 0.24)))',
+  },
+  inputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
   },
   input: {
     flex: 1,
     minHeight: '40px',
     maxHeight: '80px',
     resize: 'vertical' as const,
-    border: '1px solid gray',
-    borderRadius: '5px',
-    padding: '10px',
+    border: '1px solid var(--ms-message-input-border, var(--ms-modern-field-border, rgba(148, 163, 184, 0.34)))',
+    borderRadius: '14px',
+    padding: '10px 12px',
     overflowY: 'auto' as const,
-  },
-  sendButton: {
-    backgroundColor: '#83c0e9',
-    padding: '10px',
-    borderRadius: '5px',
-    display: 'flex',
-    alignItems: 'center',
-    border: 'none',
-    cursor: 'pointer',
+    background: 'var(--ms-message-input-background, var(--ms-modern-field-background, rgba(255, 255, 255, 0.92)))',
+    color: 'var(--ms-message-input-text, var(--ms-modern-text-primary, #0f172a))',
+    outline: 'none',
   },
 };
+
+const sendButtonStyle = computed(() => ({
+  minWidth: '44px',
+  height: '44px',
+  background:
+    'linear-gradient(135deg, var(--ms-modern-brand-primary, #6366f1) 0%, var(--ms-modern-brand-secondary, #3b82f6) 55%, var(--ms-modern-accent, #06b6d4) 100%)',
+  padding: '10px',
+  borderRadius: '14px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 'none',
+  cursor: canSend.value ? 'pointer' : 'not-allowed',
+  opacity: canSend.value ? 1 : 0.55,
+  boxShadow: 'var(--ms-modern-shadow-soft, 0 12px 32px rgba(2, 8, 23, 0.22))',
+}));
 
 const handleTextInputChange = (event: Event) => {
   const text = (event.target as HTMLInputElement).value;

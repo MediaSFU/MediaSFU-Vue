@@ -381,6 +381,36 @@ const joinClassNames = (classes: (string | undefined)[]): string | undefined => 
   return filtered.length > 0 ? filtered.join(' ').trim() : undefined
 }
 
+type RecordingDisplayAdviceParameters = {
+  meetingDisplayType?: string
+  breakOutRoomStarted?: boolean
+  breakOutRoomEnded?: boolean
+  recordingVideoParticipantsFullRoomSupport?: boolean
+  recordingVideoOptions?: string
+  recordingMediaOptions?: string
+}
+
+const getRecordingDisplayAdvice = (parameters: RecordingDisplayAdviceParameters | undefined) => {
+  if (!parameters) {
+    return null
+  }
+
+  const normalizedRecordingMediaOptions =
+    parameters.recordingMediaOptions === 'all' ? 'video' : parameters.recordingMediaOptions
+
+  if (
+    !parameters.recordingVideoParticipantsFullRoomSupport &&
+    parameters.recordingVideoOptions === 'all' &&
+    normalizedRecordingMediaOptions === 'video' &&
+    parameters.meetingDisplayType === 'all' &&
+    !(parameters.breakOutRoomStarted && !parameters.breakOutRoomEnded)
+  ) {
+    return 'Meeting display is set to All. This recording setup may be blocked. Switch the meeting display to Media before confirming so only participants with active media are included.'
+  }
+
+  return null
+}
+
 // Computed properties
 const recordPaused = computed(() => props.parameters.recordPaused)
 
@@ -546,6 +576,22 @@ const panelsActionsDividerClassName = computed(() =>
   joinClassNames(['recording-modal__divider', props.panelsActionsDividerProps?.class as string])
 )
 
+const recordingDisplayAdvice = computed(() =>
+  getRecordingDisplayAdvice(props.parameters.getUpdatedAllParams?.() ?? props.parameters)
+)
+
+const recordingAdviceStyle = computed((): CSSProperties => ({
+  padding: '12px 14px',
+  marginTop: '12px',
+  borderRadius: '10px',
+  border: '1px solid rgba(245, 158, 11, 0.35)',
+  background: 'rgba(245, 158, 11, 0.18)',
+  color: 'black',
+  fontSize: '13px',
+  fontWeight: 600,
+  lineHeight: 1.45,
+}))
+
 // Actions wrapper styles
 const actionsWrapperStyle = computed((): CSSProperties => ({
   display: 'flex',
@@ -640,6 +686,11 @@ const handleStartClick = (event: MouseEvent) => {
 
 // Main overlay node
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Recording Settings' : props.title;
+  })();
+
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, class: 'icon' })
   
   const defaultHeaderNode = h('div', {
@@ -655,7 +706,7 @@ const overlayNode = computed(() => {
       ...(props.titleProps ? Object.fromEntries(
         Object.entries(props.titleProps).filter(([key]) => !['class', 'style'].includes(key))
       ) : {})
-    }, typeof props.title === 'string' || typeof props.title === 'number' ? [props.title] : (props.title || [])),
+    }, typeof resolvedTitle === 'string' || typeof resolvedTitle === 'number' ? [resolvedTitle] : (resolvedTitle || [])),
     h('button', {
       class: closeButtonClassName.value,
       style: closeButtonStyle.value,
@@ -759,8 +810,12 @@ const overlayNode = computed(() => {
   }, [
     panelsNode,
     panelsActionsDividerNode,
+    recordingDisplayAdvice.value ? h('div', {
+      class: 'recording-modal__advice',
+      style: recordingAdviceStyle.value,
+    }, [recordingDisplayAdvice.value]) : null,
     actionsNode
-  ])
+  ].filter(Boolean))
   
   const bodyNode = props.renderBody
     ? props.renderBody({ defaultBody: defaultBodyNode })

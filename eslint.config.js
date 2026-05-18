@@ -5,15 +5,13 @@ import vue from 'eslint-plugin-vue';
 import vueParser from 'vue-eslint-parser';
 
 export default [
-  // Ignore legacy React ported code and build artifacts
+  // Ignore build artifacts and generated/local declaration shims
   { 
     ignores: [
-      'src/react-legacy/**', 
       'dist/**', 
       'node_modules/**',
       '*.d.ts',
       'src/types/react.d.ts',
-      'src/types/legacy.d.ts',
       'convert-mediasfu-generic.js',
       '*.js',
     ] 

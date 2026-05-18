@@ -1,4 +1,4 @@
-import { Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import type { Consumer, DtlsParameters, IceCandidate, IceParameters, ProducerCodecOptions, RtpCapabilities, RtpEncodingParameters } from 'mediasoup-client';
 
 // Note: Types like ConnectSendTransportScreenType, PrepopulateUserMediaType, etc.
@@ -558,7 +558,7 @@ export interface CustomAudioCardOptions {
 
 export interface CustomMiniCardOptions {
   initials: string;
-  fontSize: string;
+  fontSize: string | number;
   customStyle?: boolean;
   name: string;
   showVideoIcon: boolean;
@@ -642,6 +642,7 @@ export type CreateWebRTCTransportResponse = {
 // Additional types needed by Vue components
 export interface PreJoinPageParameters {
   imgSrc?: string;
+  eventType?: EventType;
   showAlert?: ShowAlert;
   updateIsLoadingModalVisible: (visible: boolean) => void;
   connectSocket: any; // ConnectSocketType - avoiding circular dependency
@@ -649,6 +650,7 @@ export interface PreJoinPageParameters {
   updateSocket: (socket: Socket) => void;
   updateLocalSocket?: (socket: Socket) => void;
   updateValidated: (validated: boolean) => void;
+  updateEventType?: (eventType: EventType) => void;
   updateApiUserName: (userName: string) => void;
   updateApiToken: (token: string) => void;
   updateLink: (link: string) => void;

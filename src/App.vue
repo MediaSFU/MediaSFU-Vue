@@ -186,7 +186,7 @@ const selectedDemo = computed(() => demos.find((demo) => demo.id === selectedId.
 <script setup lang="ts">
 import { ref, h, computed, type Component } from 'vue'
 // MediaSFU view components (if you choose to use them)
-import MediasfuGeneric from './components/mediasfuComponents/MediasfuGeneric.vue'
+import { ModernMediasfuGeneric } from './modern'
 // import MediasfuBroadcast from './components/mediasfuComponents/MediasfuBroadcast.vue'
 // import MediasfuChat from './components/mediasfuComponents/MediasfuChat.vue'
 // import MediasfuWebinar from './components/mediasfuComponents/MediasfuWebinar.vue'
@@ -194,13 +194,11 @@ import MediasfuGeneric from './components/mediasfuComponents/MediasfuGeneric.vue
 
 import type { MediasfuUICustomOverrides } from './types/ui-overrides'
 
-// Pre-Join Page component (if you choose to use it)
-import PreJoinPage from './components/miscComponents/PreJoinPage.vue'
-
 // Import custom "create" and "join" room functions
-import { createRoomOnMediaSFU } from './utils/mediasfuRooms'
-import { joinRoomOnMediaSFU } from './utils/mediasfuRooms'
-import type { CreateMediaSFURoomOptions, JoinMediaSFURoomOptions } from 'mediasfu-shared'
+import {
+  createRoomOnMediaSFU,
+  joinRoomOnMediaSFU,
+} from './utils/mediasfuRooms'
 
 /**
  * App Component
@@ -214,7 +212,7 @@ import type { CreateMediaSFURoomOptions, JoinMediaSFURoomOptions } from 'mediasf
  * Basic instructions:
  * 1. Set `localLink` to your CE server if you have one, or leave it blank to use MediaSFU Cloud.
  * 2. Set `connectMediaSFU` to determine whether you're connecting to MediaSFU Cloud services.
- * 3. Provide credentials if using MediaSFU Cloud (dummy credentials are acceptable in certain scenarios).
+ * 3. Provide local development credentials only through Vite env variables or your own backend proxy.
  * 4. If you prefer a custom UI, set `returnUI` to false and handle all interactions via `sourceParameters` and `updateSourceParameters`.
  * 5. For secure production usage, consider using custom `createMediaSFURoom` and `joinMediaSFURoom` functions to forward requests through your backend.
  */
@@ -245,16 +243,14 @@ const connectMediaSFU = localLink.trim() !== '';
 */
 
 // Scenario C: Using MediaSFU Cloud without your own server.
-// - For development, use your actual or dummy credentials.
-// - In production, securely handle credentials server-side and use custom room functions.
+// - For local development, use Vite env variables from .env.example.
+// - In production, keep real credentials server-side and use custom room functions.
 const credentials = {
-  // apiUserName: 'yourDevUser', // 8 chars recommended for dummy
-  // apiKey: 'yourDevApiKey1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', // 64 chars
-  apiUserName: 'yourDevUser', // 8 chars recommended for dummy
-  apiKey: 'yourDevApiKey1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', // 64 chars
+  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
+  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
 }
-const localLink = '' // Leave empty if not using your own server
-const connectMediaSFU = true // Set to true if using MediaSFU Cloud since localLink is empty
+const localLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK ?? ''
+const connectMediaSFU = localLink.trim() !== '' || (credentials.apiUserName.trim() !== '' && credentials.apiKey.trim() !== '')
 
 // =========================================================
 //                    UI RENDERING OPTIONS
@@ -265,41 +261,27 @@ const connectMediaSFU = true // Set to true if using MediaSFU Cloud since localL
 // 2. Provide `noUIPreJoinOptions` to simulate what would have been entered on a pre-join page.
 // 3. Use `sourceParameters` and `updateSourceParameters` to access and update state/actions.
 // 4. No need for any of the above if you're using the default MediaSFU UI.
-//
-// Example noUIPreJoinOptions:
-const noUIPreJoinOptions = ref<CreateMediaSFURoomOptions | JoinMediaSFURoomOptions>({
-  action: 'create',
-  capacity: 10,
-  duration: 15,
-  eventType: 'broadcast',
-  userName: 'Prince',
-})
-
-// Example for joining a room:
-// const noUIPreJoinOptions = ref<CreateMediaSFURoomOptions | JoinMediaSFURoomOptions>({
-//   action: 'join',
-//   userName: 'Prince',
-//   meetingID: 'yourMeetingID'
-// });
-
-const returnUI = true // Set to false for custom UI, true for default MediaSFU UI
-
-const sourceParameters = ref<Record<string, any>>({})
-const updateSourceParameters = (data: Record<string, any>) => {
-  sourceParameters.value = data
-}
 
 // =========================================================
 //              UI OVERRIDES CONFIGURATION
 // =========================================================
 //
 // The MediaSFU Vue SDK now expects custom cards to flow through the
-// consolidated `uiOverrides` object.
-const uiOverrides = computed<MediasfuUICustomOverrides>(() => ({
-  videoCard: { component: CustomVideoCard },
-  audioCard: { component: CustomAudioCard },
-  miniCard: { component: CustomMiniCard },
-}))
+// consolidated `uiOverrides` object. Keep them off by default so App.vue
+// renders the stock SDK UI instead of the demo card overrides.
+const useCustomCardOverrides = false
+
+const uiOverrides = computed<MediasfuUICustomOverrides | undefined>(() => {
+  const overrides: MediasfuUICustomOverrides = {}
+
+  if (useCustomCardOverrides) {
+    overrides.videoCard = { component: CustomVideoCard }
+    overrides.audioCard = { component: CustomAudioCard }
+    overrides.miniCard = { component: CustomMiniCard }
+  }
+
+  return Object.keys(overrides).length > 0 ? overrides : undefined
+})
 
 // =========================================================
 //                CUSTOM ROOM FUNCTIONS (OPTIONAL)
@@ -525,7 +507,7 @@ const CustomAudioCard: Component = {
 const CustomMiniCard: Component = {
   props: {
     initials: String,
-    fontSize: String,
+    fontSize: [String, Number],
     customStyle: Object,
     name: String,
     showVideoIcon: Boolean,
@@ -549,7 +531,7 @@ const CustomMiniCard: Component = {
         justifyContent: 'center',
         color: 'white',
         fontWeight: 'bold',
-        fontSize: props.fontSize || '14px',
+        fontSize: typeof props.fontSize === 'number' ? `${props.fontSize}px` : (props.fontSize || '14px'),
         margin: '2px',
         boxShadow: hover.value ? '0 4px 12px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.3)',
         cursor: 'pointer',
@@ -634,9 +616,10 @@ const CustomMiniCard: Component = {
     Example: <MediasfuWebinar ... />
     Example: <MediasfuConference ... />
 
-    The PreJoinPage component is displayed if `returnUI` is true.
-    If `returnUI` is false, `noUIPreJoinOptions` is used as a substitute.
-    You can also use `sourceParameters` to interact with MediaSFU functionalities directly.
+    App.vue intentionally serves the stock ModernMediasfuGeneric entry flow.
+    Use the scenario-specific App*.vue files for event-focused demos, or wire
+    custom UI/no-UI integrations in a dedicated demo surface instead of the
+    default app entry.
     Avoid using `useLocalUIMode` or `useSeed` in new implementations.
     Ensure that real credentials are not exposed in the frontend.
     Use HTTPS and secure backend endpoints for production.
@@ -713,15 +696,10 @@ const CustomMiniCard: Component = {
   />
   -->
 
-  <MediasfuGeneric
-    :prejoin-page="PreJoinPage"
+  <ModernMediasfuGeneric
     :credentials="credentials"
     :local-link="localLink"
     :connect-media-s-f-u="connectMediaSFU"
-    :return-u-i="returnUI"
-    :no-u-i-pre-join-options="!returnUI ? noUIPreJoinOptions : undefined"
-    :source-parameters="!returnUI ? sourceParameters : undefined"
-    :update-source-parameters="!returnUI ? updateSourceParameters : undefined"
     :create-media-s-f-u-room="createRoomOnMediaSFU"
     :join-media-s-f-u-room="joinRoomOnMediaSFU"
     :ui-overrides="uiOverrides"

@@ -48,6 +48,7 @@ export interface AddVideosGridParameters extends UpdateMiniCardsGridParameters {
   videoCardComponent?: typeof VideoCard;
   audioCardComponent?: typeof AudioCard;
   miniCardComponent?: typeof MiniCard;
+  isDarkModeValue?: boolean;
 
   getUpdatedAllParams: () => AddVideosGridParameters;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,6 +113,15 @@ export async function addVideosGrid({
   const AudioCardComponentOverride = audioCardComponent ?? AudioCard;
   const MiniCardComponentOverride = miniCardComponent ?? MiniCard;
 
+  const showSubtitlesOnCards = parameters.showSubtitlesOnCards !== false;
+  const textColorThemed = 'var(--ms-modern-text-primary)';
+  const themedBorder =
+    eventType !== 'broadcast'
+      ? '2px solid var(--ms-modern-panel-border)'
+      : '0px solid transparent';
+  const themeSuffix = parameters.isDarkModeValue === false ? '-light' : '-dark';
+  const withThemeSuffix = (key: string) => `${key}${themeSuffix}`;
+
   const newComponents: RenderableComponent[][] = [[], []];
   let remoteProducerId: string = '';
 
@@ -139,10 +149,10 @@ export async function addVideosGrid({
               props: {
                 name: (participant as Participant).name || '',
                 barColor: 'red',
-                textColor: 'white',
+                textColor: textColorThemed,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 controlsPosition: 'topLeft',
                 infoPosition: 'topRight',
@@ -151,18 +161,19 @@ export async function addVideosGrid({
                 backgroundColor: 'transparent',
                 showControls: eventType !== 'chat',
                 participant: participant,
+                showSubtitles: showSubtitlesOnCards,
               },
-              key: `audio-${(participant as Participant).id}`,
+              key: withThemeSuffix(`audio-${(participant as Participant).id}`),
             }
           : {
               component: AudioCardComponentOverride,
               props: {
                 name: (participant as Participant).name || '',
                 barColor: 'red',
-                textColor: 'white',
+                textColor: textColorThemed,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 controlsPosition: 'topLeft',
                 infoPosition: 'topRight',
@@ -171,8 +182,9 @@ export async function addVideosGrid({
                 backgroundColor: 'transparent',
                 showControls: eventType !== 'chat',
                 participant: participant,
+                showSubtitles: showSubtitlesOnCards,
               },
-              key: `audio-${(participant as Participant).id}`,
+              key: withThemeSuffix(`audio-${(participant as Participant).id}`),
             };
 
         newComponents[0]!.push(audioCardComponent);
@@ -185,10 +197,10 @@ export async function addVideosGrid({
                 fontSize: 20,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
               },
-              key: `mini-${(participant as Participant).id}`,
+              key: withThemeSuffix(`mini-${(participant as Participant).id}`),
             }
           : {
               component: MiniCardComponentOverride,
@@ -197,10 +209,10 @@ export async function addVideosGrid({
                 fontSize: 20,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
               },
-              key: `mini-${(participant as Participant).id}`,
+              key: withThemeSuffix(`mini-${(participant as Participant).id}`),
             };
 
         newComponents[0]!.push(miniCardComponent);
@@ -221,10 +233,10 @@ export async function addVideosGrid({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
-                key: 'mini-you',
+                key: withThemeSuffix('mini-you'),
               }
             : {
                 component: MiniCardComponentOverride,
@@ -233,10 +245,10 @@ export async function addVideosGrid({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
-                key: 'mini-you',
+                key: withThemeSuffix('mini-you'),
               };
 
           newComponents[0]!.push(miniCardComponent);
@@ -261,7 +273,7 @@ export async function addVideosGrid({
                   backgroundColor: 'transparent',
                   parameters: parameters,
                 },
-                key: 'video-you',
+                key: withThemeSuffix('video-you'),
               }
             : {
                 component: VideoCardComponentOverride,
@@ -271,7 +283,7 @@ export async function addVideosGrid({
                   eventType: eventType,
                   forceFullDisplay: eventType === 'webinar' ? false : forceFullDisplay,
                   customStyle: {
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                   participant: videoParticipant,
                   backgroundColor: 'transparent',
@@ -281,7 +293,7 @@ export async function addVideosGrid({
                   doMirror: true,
                   parameters: parameters,
                 },
-                key: 'video-you',
+                key: withThemeSuffix('video-you'),
               };
 
           newComponents[0]!.push(videoCardComponent);
@@ -304,8 +316,9 @@ export async function addVideosGrid({
                   name: participant_.name || '',
                   backgroundColor: 'transparent',
                   parameters: parameters,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `video-${participant_.id}`,
+                key: withThemeSuffix(`video-${participant_.id}`),
               }
             : {
                 component: VideoCardComponentOverride,
@@ -315,7 +328,7 @@ export async function addVideosGrid({
                   eventType: eventType,
                   forceFullDisplay: forceFullDisplay,
                   customStyle: {
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                   participant: participant_,
                   backgroundColor: 'transparent',
@@ -324,8 +337,9 @@ export async function addVideosGrid({
                   name: participant_.name || '',
                   doMirror: false,
                   parameters: parameters,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `video-${participant_.id}`,
+                key: withThemeSuffix(`video-${participant_.id}`),
               };
 
           newComponents[0]!.push(videoCardComponent);
@@ -374,10 +388,10 @@ export async function addVideosGrid({
                 props: {
                   name: (participant as Participant).name,
                   barColor: 'red',
-                  textColor: 'white',
+                  textColor: textColorThemed,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                   controlsPosition: 'topLeft',
                   infoPosition: 'topRight',
@@ -386,18 +400,19 @@ export async function addVideosGrid({
                   backgroundColor: 'transparent',
                   showControls: eventType !== 'chat',
                   participant: participant,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `audio-alt-${(participant as Participant).id}`,
+                key: withThemeSuffix(`audio-alt-${(participant as Participant).id}`),
               }
             : {
                 component: AudioCardComponentOverride,
                 props: {
                   name: (participant as Participant).name,
                   barColor: 'red',
-                  textColor: 'white',
+                  textColor: textColorThemed,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                   controlsPosition: 'topLeft',
                   infoPosition: 'topRight',
@@ -406,8 +421,9 @@ export async function addVideosGrid({
                   backgroundColor: 'transparent',
                   showControls: eventType !== 'chat',
                   participant: participant,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `audio-alt-${(participant as Participant).id}`,
+                key: withThemeSuffix(`audio-alt-${(participant as Participant).id}`),
               };
 
           newComponents[1]!.push(audioCardComponent);
@@ -420,10 +436,10 @@ export async function addVideosGrid({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
-                key: `mini-alt-${(participant as Participant).id}`,
+                key: withThemeSuffix(`mini-alt-${(participant as Participant).id}`),
               }
             : {
                 component: MiniCardComponentOverride,
@@ -432,10 +448,10 @@ export async function addVideosGrid({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
-                key: `mini-alt-${(participant as Participant).id}`,
+                key: withThemeSuffix(`mini-alt-${(participant as Participant).id}`),
               };
 
           newComponents[1]!.push(miniCardComponent);
@@ -458,8 +474,9 @@ export async function addVideosGrid({
                   name: (participant as Participant).name,
                   backgroundColor: 'transparent',
                   parameters: parameters,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `video-alt-${participant_.id}`,
+                key: withThemeSuffix(`video-alt-${participant_.id}`),
               }
             : {
                 component: VideoCardComponentOverride,
@@ -469,7 +486,7 @@ export async function addVideosGrid({
                   eventType: eventType,
                   forceFullDisplay: forceFullDisplay,
                   customStyle: {
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                   participant: participant_,
                   backgroundColor: 'transparent',
@@ -478,8 +495,9 @@ export async function addVideosGrid({
                   name: (participant as Participant).name,
                   doMirror: false,
                   parameters: parameters,
+                  showSubtitles: showSubtitlesOnCards,
                 },
-                key: `video-alt-${participant_.id}`,
+                key: withThemeSuffix(`video-alt-${participant_.id}`),
               };
 
           newComponents[1]!.push(videoCardComponent);

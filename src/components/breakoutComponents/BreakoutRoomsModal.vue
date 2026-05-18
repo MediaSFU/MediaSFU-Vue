@@ -118,7 +118,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import RoomList from './RoomList.vue';
 import EditRoomModal from './EditRoomModal.vue';
-import { Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { handleStartBreakout } from 'mediasfu-shared';
 import { handleStopBreakout } from 'mediasfu-shared';
 import type { Participant, BreakoutParticipant } from 'mediasfu-shared';
@@ -669,6 +669,16 @@ const contentClassName = computed(() =>
 
 // Main overlay node
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null
+      ? h('span', [
+          'Breakout Rooms ',
+          h(FontAwesomeIcon, { icon: faDoorOpen }),
+        ])
+      : props.title;
+  })();
+
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'xl' })
   
   const defaultHeaderNode = h('div', {
@@ -684,7 +694,7 @@ const overlayNode = computed(() => {
       ...(props.titleProps ? Object.fromEntries(
         Object.entries(props.titleProps).filter(([key]) => !['class', 'style'].includes(key))
       ) : {})
-    }, typeof props.title === 'string' || typeof props.title === 'number' ? [props.title] : (props.title || [])),
+    }, typeof resolvedTitle === 'string' || typeof resolvedTitle === 'number' ? [resolvedTitle] : (resolvedTitle || [])),
     h('button', {
       class: joinClassNames(['close-button', props.closeButtonProps?.class as string]),
       style: { ...(props.closeButtonProps?.style as CSSProperties || {}) },

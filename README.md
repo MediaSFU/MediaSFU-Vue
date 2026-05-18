@@ -37,32 +37,118 @@
 
 ---
 
-## 🚨 **BREAKING: AI Phone Agents at $0.10 per 1,000 minutes**
-
-📞 **Call our live AI demos right now:**
-- 🇺🇸 **+1 (785) 369-1724** - Mixed Support Demo  
-- 🇬🇧 **+44 7445 146575** - AI Conversation Demo  
-- 🇨🇦 **+1 (587) 407-1990** - Technical Support Demo  
-- 🇨🇦 **+1 (647) 558-6650** - Friendly AI Chat Demo  
-
-**Traditional providers charge $0.05 per minute. We charge $0.10 per 1,000 minutes. That's 500x cheaper.**
-
-✅ **Deploy AI phone agents in 30 minutes**  
-✅ **Works with ANY SIP provider** (Twilio, Telnyx, Zadarma, etc.)  
-✅ **Seamless AI-to-human handoffs**  
-✅ **Real-time call analytics & transcription**  
-
-📖 **[Complete SIP/PSTN Documentation →](https://mediasfu.com/telephony)**
-
----
-
 # MediaSFU Vue SDK
 
-> **🎉 Welcome to MediaSFU Vue!** This is the official Vue 3 SDK for MediaSFU. While most code examples have been adapted from React to Vue's Composition API, some sections may still show React-style JSX. Please adapt these examples to Vue template syntax as needed. We're actively updating all examples.
+MediaSFU Vue is a Vue 3 WebRTC SDK for building video calling, voice calling, conferencing, webinars, live streaming, chat, recording, screen sharing, whiteboards, polls, live subtitles, translation, and collaboration workflows.
+
+It is designed for teams that want to start with prebuilt room UI and then progressively customize or replace that UI without rebuilding the media runtime, signaling, or room orchestration from scratch.
+
+## Why Vue teams choose MediaSFU
+
+- Start fast with `MediasfuGeneric` or the themed `ModernMediasfuGeneric`, plus `MediasfuConference`, `MediasfuWebinar`, `MediasfuBroadcast`, and `MediasfuChat`.
+- Keep the bundled UI, override targeted surfaces with `uiOverrides`, or run the runtime headless with `returnUI={false}`.
+- Connect to MediaSFU Cloud or your self-hosted MediaSFU Open deployment.
+- Use Vue 3 and Composition API-friendly wrappers without losing access to the broader MediaSFU product model.
+
+## Quick Start: First Working Room
+
+```bash
+npm install mediasfu-vue
+```
+
+Import the package stylesheet once in your app entry, usually `main.ts`:
+
+```ts
+import 'mediasfu-vue/dist/mediasfu-vue.css';
+```
+
+Then render one of the prebuilt room components. Keep real production credentials on your server. For local development, copy `.env.example` to `.env` and use Vite variables, or pass values from your own secure backend flow.
+
+```vue
+<script setup lang="ts">
+import { MediasfuGeneric } from 'mediasfu-vue';
+
+const credentials = {
+  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
+  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
+};
+
+const localLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK ?? '';
+const connectMediaSFU = localLink !== '' || Boolean(credentials.apiUserName && credentials.apiKey);
+</script>
+
+<template>
+  <MediasfuGeneric
+    :credentials="credentials"
+    :local-link="localLink"
+    :connectMediaSFU="connectMediaSFU"
+  />
+</template>
+```
+
+You still need a MediaSFU-compatible backend for room lifecycle, signaling, and media routing. Use MediaSFU Cloud for managed infrastructure, or pass `localLink` to point at your self-hosted MediaSFU Open / Community Edition server.
+
+If you want the same room runtime with the modern themed shell, import `ModernMediasfuGeneric` from the package root:
+
+```vue
+<script setup lang="ts">
+import { ModernMediasfuGeneric } from 'mediasfu-vue';
+
+const credentials = {
+  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
+  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
+};
+</script>
+
+<template>
+  <ModernMediasfuGeneric
+    :credentials="credentials"
+    :container-style="{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0f172a, #1e3a8a)'
+    }"
+  />
+</template>
+```
+
+Use `MediasfuGeneric` when you want the classic entry flow and broadest parity with older examples. Use `ModernMediasfuGeneric` when you want the newer themed shell, modern modal system, and glassmorphism layout from the start.
+
+### Choose an integration path
+
+| Path | Best for | What you pass |
+| --- | --- | --- |
+| MediaSFU Cloud | Managed rooms, signaling, and media routing | `credentials` and `connectMediaSFU` |
+| MediaSFU Open / CE | Self-hosted infrastructure | `localLink` and your CE server settings |
+| Modern themed UI | New Vue apps that want the polished glassmorphism shell | `ModernMediasfuGeneric` with the same core room props |
+| Secure production proxy | Public apps that must keep keys off the client | custom `createMediaSFURoom` and `joinMediaSFURoom` functions |
+| Local UI mode | Storybook, demos, tests, and screenshots | `useLocalUIMode`, `useSeed`, and `seedData` |
+
+Use the generic component when users choose the event type on a welcome screen. Use the named components when your product already knows the experience type.
+
+```vue
+<template>
+  <MediasfuConference :credentials="credentials" />
+  <MediasfuWebinar :credentials="credentials" />
+  <MediasfuBroadcast :credentials="credentials" />
+  <MediasfuChat :credentials="credentials" />
+</template>
+```
+
+For demos without a backend connection, seed the UI locally:
+
+```vue
+<template>
+  <MediasfuGeneric
+    :useLocalUIMode="true"
+    :useSeed="true"
+    :seedData="{ member: 'DemoUser', eventType: 'conference' }"
+  />
+</template>
+```
 
 ---
 
-## ⚠️ REQUIRED: Import CSS Styles
+## Required: Import CSS Styles
 
 **MediaSFU UI will NOT display correctly without importing the CSS file!**
 
@@ -76,11 +162,32 @@ This is required for all MediaSFU components to render with proper styling. With
 
 ---
 
+## Also available: AI phone agents, SIP, and PSTN flows
+
+MediaSFU also supports AI phone agents and telephony workflows on top of the same broader communications platform.
+
+Call the live demos:
+
+- 🇺🇸 **+1 (785) 369-1724** - Mixed Support Demo
+- 🇬🇧 **+44 7445 146575** - AI Conversation Demo
+- 🇨🇦 **+1 (587) 407-1990** - Technical Support Demo
+- 🇨🇦 **+1 (647) 558-6650** - Friendly AI Chat Demo
+
+Why teams evaluate the telephony side:
+
+- Deploy AI phone agents in about 30 minutes
+- Works with SIP providers such as Twilio, Telnyx, and Zadarma
+- Supports AI-to-human handoffs, analytics, and transcription
+
+📖 **[Complete SIP/PSTN Documentation →](https://mediasfu.com/telephony)**
+
+---
+
 ## Quick Reference: Component Props & UI Overrides
 
 > **New:** UI override parity now extends across Webinar and Chat layouts, unifying customization for every MediaSFU interface.
 
-Every primary MediaSFU UI export—`MediasfuGeneric`, `MediasfuBroadcast`, `MediasfuConference`, `MediasfuWebinar`, and `MediasfuChat`—now ships with a consistent prop surface and a powerful `uiOverrides` map, so you can bend the bundled experience to match your product without losing MediaSFU’s hardened real-time logic.
+Every primary MediaSFU UI export—`MediasfuGeneric`, `ModernMediasfuGeneric`, `MediasfuBroadcast`, `MediasfuConference`, `MediasfuWebinar`, and `MediasfuChat`—now ships with a consistent core prop surface and a powerful `uiOverrides` map, so you can bend the bundled experience to match your product without losing MediaSFU’s hardened real-time logic.
 
 ### Shared component props (applies to every MediaSFU UI component)
 
@@ -103,7 +210,23 @@ Every primary MediaSFU UI export—`MediasfuGeneric`, `MediasfuBroadcast`, `Medi
 | `containerStyle` | `StyleValue` | `undefined` | Apply inline styles to the root wrapper (dashboards, split views, etc.). |
 | `uiOverrides` | `MediasfuUICustomOverrides` | `undefined` | Targeted component/function overrides described below. |
 
-> **Power combo:** Set `returnUI={false}` to run MediaSFU logic headless, capture helpers via `updateSourceParameters`, and selectively bring UI pieces back with `uiOverrides`. That gives you progressive migration with minimal code churn.
+> **Power combo:** Set `:returnUI="false"` to run MediaSFU logic headless, capture helpers via `updateSourceParameters`, and selectively bring UI pieces back with `uiOverrides`. That gives you progressive migration with minimal code churn.
+
+### Launch contract for custom UI and sidebar panels
+
+When you build on top of `sourceParameters`, `customComponent`, or `uiOverrides`, treat the raw `updateIs...Visible(true)` helpers as low-level state setters, not the preferred integration surface.
+
+1. Use the SDK's sidebar-aware open helpers for desktop menu and side-panel flows whenever they are available. They preserve sidebar navigation history and choose the correct render mode for the current viewport.
+2. `launchMediaSettings` and the recording launch path do setup work before the panel is shown. Media settings refreshes the latest camera and microphone lists, while recording re-checks permission and recording state. A direct visibility toggle can skip that setup.
+3. If you wrap a modal or embedded sidebar body, resolve live params from `parameters.getUpdatedAllParams?.()` when it exists instead of caching the first `parameters` snapshot. That keeps device lists, recording state, and other mutable room data current.
+
+```ts
+const liveParameters = computed(
+  () => parameters.getUpdatedAllParams?.() ?? parameters
+);
+```
+
+This is especially important for custom media-settings, recording, and other sidebar-rendered panels that depend on fresh runtime state.
 
 ```ts
 import type { MediasfuUICustomOverrides } from "mediasfu-vue";
@@ -113,142 +236,217 @@ const overrides: MediasfuUICustomOverrides = { /* ... */ };
 
 Bring the types into your project to unlock full IntelliSense for every override slot.
 
-### Custom UI Playbook
+### Vue Customization Playbook
 
-Use a toggle-driven "playbook" component to experiment with MediaSFU’s customization layers. Flip a couple of booleans and you can watch the SDK jump between prebuilt layouts, headless logic, or a fully bespoke workspace driven by `customComponent`.
+Use this progression when moving from a stock MediaSFU room to a product-specific Vue experience. Start with the prebuilt UI, add targeted overrides, then move to `customComponent` or `returnUI` only when your app needs full ownership of the interface.
 
-#### What the playbook demonstrates
+#### 1. Switch event types and connection modes
 
-- **Connection presets**: toggle `connectionScenario` between `cloud`, `hybrid`, or `ce` to swap credentials, local links, and connection modes in one place.
-- **Experience selector**: the `selectedExperience` switch renders `MediasfuGeneric`, `MediasfuBroadcast`, `MediasfuWebinar`, `MediasfuConference`, or `MediasfuChat` without touching the rest of your stack.
-- **UI strategy flags**: booleans like `showPrebuiltUI`, `enableFullCustomUI`, and `enableNoUIPreJoin` demonstrate how to run the MediaSFU logic with or without the bundled UI.
-- **Layered overrides**: toggles enable the custom video/audio/mini cards, drop-in `uiOverrides` for layout and modal surfaces, container styling, and backend proxy helpers.
-- **Custom workspace demo**: a `customComponent` receives live MediaSFU helpers so you can build dashboards, CRM surfaces, or any bespoke host interface.
-- **Debug panel & helpers**: optional JSON panel exposes the `updateSourceParameters` payload so you can see exactly what to wire into your own components.
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import {
+  MediasfuBroadcast,
+  MediasfuChat,
+  MediasfuConference,
+  MediasfuGeneric,
+  MediasfuWebinar,
+} from 'mediasfu-vue';
+import type { MediasfuUICustomOverrides } from 'mediasfu-vue';
 
-#### Try it quickly
+type ConnectionScenario = 'cloud' | 'hybrid' | 'ce';
+type ExperienceKey = 'generic' | 'broadcast' | 'webinar' | 'conference' | 'chat';
 
-```tsx
-const connectionScenario: "cloud" | "hybrid" | "ce" = "cloud";
-const selectedExperience = "generic" as const;
-const showPrebuiltUI = true;
-const enableFullCustomUI = false;
+const connectionScenario = ref<ConnectionScenario>('cloud');
+const selectedExperience = ref<ExperienceKey>('generic');
 
-const connectionPresets = {
-  cloud: { credentials: { apiUserName: "demo", apiKey: "demo" }, localLink: "", connectMediaSFU: true },
-  hybrid: { credentials: { apiUserName: "demo", apiKey: "demo" }, localLink: "http://localhost:3000", connectMediaSFU: true },
-  ce: { credentials: undefined, localLink: "http://localhost:3000", connectMediaSFU: false },
+const credentials = {
+  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
+  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
 };
 
-const Experience = {
+const hasCloudCredentials = computed(
+  () => credentials.apiUserName.trim() !== '' && credentials.apiKey.trim() !== '',
+);
+
+const connectionPresets = computed(() => ({
+  cloud: {
+    credentials,
+    localLink: '',
+    connectMediaSFU: hasCloudCredentials.value,
+  },
+  hybrid: {
+    credentials,
+    localLink: 'http://localhost:3000',
+    connectMediaSFU: true,
+  },
+  ce: {
+    credentials: undefined,
+    localLink: 'http://localhost:3000',
+    connectMediaSFU: false,
+  },
+}));
+
+const experiences = {
   generic: MediasfuGeneric,
   broadcast: MediasfuBroadcast,
   webinar: MediasfuWebinar,
   conference: MediasfuConference,
   chat: MediasfuChat,
-}[selectedExperience];
-
-export const CustomUIPlaybook = () => {
-  const overrides = useMemo(() => ({
-    mainContainer: enableFullCustomUI
-      ? {
-          render: (props) => (
-            <div style={{ border: "4px dashed purple", borderRadius: 24, padding: 16 }}>
-              <MainContainerComponent {...props} />
-            </div>
-          ),
-        }
-      : undefined,
-  }), [enableFullCustomUI]);
-
-  const current = connectionPresets[connectionScenario];
-
-  return (
-    <Experience
-      {...current}
-      showPrebuiltUI={showPrebuiltUI}
-      uiOverrides={overrides}
-      containerStyle={{ background: "linear-gradient(135deg, #0f172a, #1e3a8a)", minHeight: "100vh" }}
-    />
-  );
 };
+
+const Experience = computed(() => experiences[selectedExperience.value]);
+const currentConnection = computed(() => connectionPresets.value[connectionScenario.value]);
+
+const uiOverrides = computed<MediasfuUICustomOverrides>(() => ({}));
+</script>
+
+<template>
+  <component
+    :is="Experience"
+    v-bind="currentConnection"
+    :ui-overrides="uiOverrides"
+    :container-style="{ minHeight: '100vh' }"
+  />
+</template>
 ```
 
-Toggle the configuration values at the top of the playbook and watch the UI reconfigure instantly. It’s the fastest path to understand MediaSFU’s override surface before you fold the patterns into your production entrypoint.
+#### 2. Replace cards, controls, or modals
 
-#### Passing custom props and UI overrides
+Create normal Vue components for the parts your product owns, then wire them through `uiOverrides`.
 
-Use the same playbook to validate bespoke cards, override bundles, and fully custom workspaces before you move them into production code:
+```vue
+<script setup lang="ts">
+import { computed } from 'vue';
+import { MediasfuConference } from 'mediasfu-vue';
+import type { MediasfuUICustomOverrides } from 'mediasfu-vue';
+import BrandedVideoCard from './BrandedVideoCard.vue';
+import ProductControls from './ProductControls.vue';
+import TeamMessagesModal from './TeamMessagesModal.vue';
 
-```tsx
-const videoCard: CustomVideoCardType = (props) => (
-  <VideoCard
-    {...props}
-    customStyle={{
-      borderRadius: 20,
-      border: "3px solid #4c1d95",
-      boxShadow: "0 28px 65px rgba(76,29,149,0.35)",
-      background: "linear-gradient(140deg, rgba(15,23,42,0.78), rgba(30,64,175,0.45))",
-      ...(props.customStyle ?? {}),
-    }}
-  />
-);
-
-const audioCard: CustomAudioCardType = (props) => (
-  <AudioCard
-    {...props}
-    barColor="#22c55e"
-    customStyle={{ borderRadius: 22, background: "rgba(34,197,94,0.1)" }}
-  />
-);
-
-const miniCard: CustomMiniCardType = (props) => (
-  <MiniCard
-    {...props}
-    renderContainer={({ defaultContainer }) => (
-      <div style={{ display: "grid", placeItems: "center", height: "100%" }}>{defaultContainer}</div>
-    )}
-  />
-);
-
-const uiOverrides = useMemo<MediasfuUICustomOverrides>(() => ({
-  mainContainer: {
-    render: (props) => (
-      <div style={{ border: "4px dashed rgba(139,92,246,0.8)", borderRadius: 28, padding: 16 }}>
-        <MainContainerComponent {...props} />
-      </div>
-    ),
-  },
-  menuModal: {
-    component: (modalProps) => <MenuModal {...modalProps} variant="glass" />,
-  },
+const uiOverrides = computed<MediasfuUICustomOverrides>(() => ({
+  videoCard: { component: BrandedVideoCard },
+  controlButtons: { component: ProductControls },
+  messagesModal: { component: TeamMessagesModal },
   consumerResume: {
     wrap: (original) => async (params) => {
       const startedAt = performance.now();
       const result = await original(params);
-      analytics.track("consumer_resume", {
-        durationMs: performance.now() - startedAt,
+
+      console.info('consumer_resume', {
+        durationMs: Math.round(performance.now() - startedAt),
         consumerId: params?.consumer?.id,
       });
+
       return result;
     },
   },
-}), []);
+}));
+</script>
 
-return (
-  <Experience
-    {...current}
-    customVideoCard={videoCard}
-    customAudioCard={audioCard}
-    customMiniCard={miniCard}
-    customComponent={enableFullCustomUI ? CustomWorkspace : undefined}
-    containerStyle={{ background: "#0f172a", borderRadius: 32, overflow: "hidden" }}
-    uiOverrides={uiOverrides}
-  />
-);
+<template>
+  <MediasfuConference :credentials="credentials" :ui-overrides="uiOverrides" />
+</template>
 ```
 
-Because the playbook surfaces `updateSourceParameters`, you can also log or snapshot the helper bundle (`getParticipantMedia`, `toggleMenuModal`, `showAlert`, and more) to ensure your custom UI always receives the hooks it expects.
+#### 3. Own the whole shell with `customComponent`
+
+Use `customComponent` when your app needs a branded workspace but still wants MediaSFU to manage room state, media transports, socket events, and helpers.
+
+```vue
+<script setup lang="ts">
+import { computed, markRaw, ref } from 'vue';
+import { MediasfuGeneric } from 'mediasfu-vue';
+import ProductRoomShell from './ProductRoomShell.vue';
+
+const enableProductShell = ref(true);
+const customComponent = computed(() => (
+  enableProductShell.value ? markRaw(ProductRoomShell) : undefined
+));
+</script>
+
+<template>
+  <MediasfuGeneric
+    :credentials="credentials"
+    :custom-component="customComponent"
+  />
+</template>
+```
+
+#### 4. Go headless with `returnUI=false`
+
+Use headless mode when your app supplies every visible surface. MediaSFU still creates or joins the room and gives you helpers through `updateSourceParameters`.
+
+```vue
+<script setup lang="ts">
+import { shallowRef } from 'vue';
+import { MediasfuGeneric } from 'mediasfu-vue';
+
+const sourceParameters = shallowRef<Record<string, unknown>>({});
+
+const updateSourceParameters = (helpers: Record<string, unknown>) => {
+  sourceParameters.value = helpers;
+};
+
+const noUIPreJoinOptions = {
+  action: 'create',
+  eventType: 'conference',
+  userName: 'Host',
+  duration: 60,
+  capacity: 25,
+};
+</script>
+
+<template>
+  <MediasfuGeneric
+    :credentials="credentials"
+    :returnUI="false"
+    :noUIPreJoinOptions="noUIPreJoinOptions"
+    :sourceParameters="sourceParameters"
+    :updateSourceParameters="updateSourceParameters"
+  />
+</template>
+```
+
+#### 5. Keep production credentials server-side
+
+For public applications, proxy room creation and join calls through your own backend. The browser sends ordinary user/session data to your server, and your server calls MediaSFU Cloud with real credentials.
+
+```vue
+<script setup lang="ts">
+import { MediasfuGeneric } from 'mediasfu-vue';
+
+const createMediaSFURoom = async (options: unknown) => {
+  const response = await fetch('/api/mediasfu/create-room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options),
+  });
+
+  return response.json();
+};
+
+const joinMediaSFURoom = async (options: unknown) => {
+  const response = await fetch('/api/mediasfu/join-room', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options),
+  });
+
+  return response.json();
+};
+</script>
+
+<template>
+  <MediasfuGeneric
+    :createMediaSFURoom="createMediaSFURoom"
+    :joinMediaSFURoom="joinMediaSFURoom"
+    :connectMediaSFU="true"
+  />
+</template>
+```
+
+Because these patterns all work through Vue components, refs, computed values, and normal template bindings, they are easier to lift into Nuxt, dashboards, learning platforms, telehealth apps, livestream studios, and collaboration tools.
 
 ### `uiOverrides` map — override keys at a glance
 
@@ -276,7 +474,7 @@ Each key accepts a `CustomComponentOverride<Props>` object with optional `compon
 
 | Key | Default component | Typical use |
 | --- | --- | --- |
-| `videoCard` | `VideoCard` | Add host badges, vueions, or CRM overlays. |
+| `videoCard` | `VideoCard` | Add host badges, captions, or CRM overlays. |
 | `audioCard` | `AudioCard` | Swap avatars or expose spoken-language info. |
 | `miniCard` | `MiniCard` | Customize thumbnails in picture-in-picture modes. |
 | `miniAudio` | `MiniAudio` | Re-style the audio-only mini indicators. |
@@ -329,46 +527,58 @@ Each key accepts a `CustomComponentOverride<Props>` object with optional `compon
 
 ### Example: swap the chat modal and theme the controls
 
-```tsx
-import { MediasfuGeneric } from "mediasfu-vue";
-import { MyChatModal } from "./ui/MyChatModal";
-import { MyControls } from "./ui/MyControls";
+```vue
+<script setup lang="ts">
+import { computed } from 'vue';
+import { MediasfuGeneric } from 'mediasfu-vue';
+import type { MediasfuUICustomOverrides } from 'mediasfu-vue';
+import MyChatModal from './ui/MyChatModal.vue';
+import MyControls from './ui/MyControls.vue';
 
-const uiOverrides = {
-  messagesModal: {
-    component: MyChatModal,
-  },
-  controlButtons: {
-    render: (props) => <MyControls {...props} variant="glass" />,
-  },
-};
+const uiOverrides = computed<MediasfuUICustomOverrides>(() => ({
+  messagesModal: { component: MyChatModal },
+  controlButtons: { component: MyControls },
+}));
+</script>
 
-export const MyMeeting = () => (
-  <MediasfuGeneric credentials={credentials} uiOverrides={uiOverrides} />
-);
+<template>
+  <MediasfuGeneric :credentials="credentials" :ui-overrides="uiOverrides" />
+</template>
 ```
 
 ### Example: wrap a MediaSFU helper instead of replacing it
 
-```tsx
-const uiOverrides = {
+```vue
+<script setup lang="ts">
+import { computed } from 'vue';
+import { MediasfuConference } from 'mediasfu-vue';
+import type { MediasfuUICustomOverrides } from 'mediasfu-vue';
+
+const uiOverrides = computed<MediasfuUICustomOverrides>(() => ({
   consumerResume: {
     wrap: (original) => async (params) => {
       const startedAt = performance.now();
       const result = await original(params);
-      analytics.track("consumer_resume", {
-        durationMs: performance.now() - startedAt,
+
+      console.info('consumer_resume', {
+        durationMs: Math.round(performance.now() - startedAt),
         consumerId: params?.consumer?.id,
       });
+
       return result;
     },
   },
-};
+}));
+</script>
 
-<MediasfuConference uiOverrides={uiOverrides} />;
+<template>
+  <MediasfuConference :credentials="credentials" :ui-overrides="uiOverrides" />
+</template>
 ```
 
 The same override hooks power the newly refreshed `MediasfuWebinar` and `MediasfuChat` layouts, so you can guarantee a unified experience across events, webinars, or chat-first rooms.
+
+The sections below keep the broader API reference and migration history. For new Vue 3 apps, prefer the Vue Composition API examples above whenever syntax differs.
 
 ---
 
@@ -3460,7 +3670,7 @@ export default App;
  *       return res.status(401).json({ error: "Invalid or expired credentials" });
  *     }
  *
- *     const response = await fetch("https://mediasfu.com/v1/rooms", {
+ *     const response = await fetch("https://mediasfu.com/v1/rooms/", {
  *       method: "POST",
  *       headers: {
  *         "Content-Type": "application/json",
@@ -3548,7 +3758,7 @@ export default App;
 *     localLink = '',
 * }) => {
 *     try {
-*         let finalLink = 'https://mediasfu.com/v1/rooms/join';
+*         let finalLink = 'https://mediasfu.com/v1/rooms/';
 *
 *         // Update finalLink if using a local server
 *         if (localLink) {
@@ -4755,16 +4965,16 @@ To implement your custom UI for media display:
 
 1. **Custom MainGrid (Host's Video)**: 
    - Modify the UI in the `prepopulateUserMedia` function. 
-   - Example link to MediaSFU's default implementation: [`prepopulateUserMedia`](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/consumers/prepopulateUserMedia.tsx).
+  - Example link to MediaSFU's default implementation: [`prepopulateUserMedia`](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/consumers/prepopulateUserMedia.ts).
 
 2. **Custom MiniGrid (Participants' Media)**:
    - Modify the UI in the `addVideosGrid` function.
-   - Example link to MediaSFU's default implementation: [`addVideosGrid`](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/consumers/addVideosGrid.tsx).
+  - Example link to MediaSFU's default implementation: [`addVideosGrid`](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/consumers/addVideosGrid.ts).
 
 To create a custom UI, you can refer to existing MediaSFU implementations like:
 
-- [MediasfuGeneric](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/components/mediasfuComponents/MediasfuGeneric.tsx)
-- [MediasfuBroadcast](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/components/mediasfuComponents/MediasfuBroadcast.tsx)
+- [MediasfuGeneric](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/components/mediasfuComponents/MediasfuGeneric.vue)
+- [MediasfuBroadcast](https://github.com/MediaSFU/MediaSFU-Vue/blob/main/src/components/mediasfuComponents/MediasfuBroadcast.vue)
 
 Once your custom components are built, modify the imports of `prepopulateUserMedia` and `addVideosGrid` to point to your custom implementations instead of the default MediaSFU ones.
 
@@ -5004,7 +5214,7 @@ https://github.com/user-attachments/assets/310cb87c-dade-445d-aee7-dea1889d6dc4
 
 # Contributing <a name="contributing"></a>
 
-We welcome contributions from the community to improve the project! If you'd like to contribute, please check out our [GitHub repository](https://github.com/MediaSFU-Vue) and follow the guidelines outlined in the README.
+We welcome contributions from the community to improve the project! If you'd like to contribute, please check out our [GitHub repository](https://github.com/MediaSFU/MediaSFU-Vue) and follow the guidelines outlined in the README.
 
 If you encounter any issues or have suggestions for improvement, please feel free to open an issue on GitHub.
 

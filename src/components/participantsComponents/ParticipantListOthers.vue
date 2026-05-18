@@ -73,6 +73,7 @@
     >
       <ParticipantListOthersItem
         :participant="participant"
+        :is-broadcast="isBroadcast"
         :co-host="coHost"
         :member="member"
       />
@@ -107,6 +108,7 @@ import type { Participant } from '../../../../SharedTypes';
  */
 export interface ParticipantListOthersProps {
   participants: Participant[];
+  isBroadcast?: boolean;
   coHost: string;
   member: string;
 }

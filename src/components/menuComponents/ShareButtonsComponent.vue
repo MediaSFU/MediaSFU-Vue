@@ -107,13 +107,14 @@
 -->
 <template>
   <div class="share-buttons-container">
-    <div
+    <button
       v-for="(button, index) in filteredShareButtons"
       :key="index"
       class="share-button"
+      type="button"
+      :aria-label="button.label || 'Share event'"
       :style="{
         backgroundColor: button.color || 'black',
-        marginRight: index !== filteredShareButtons.length - 1 ? '10px' : '0',
       }"
       @click="button.action"
     >
@@ -121,16 +122,17 @@
         :icon="button.icon"
         :style="{ color: button.iconColor || '#ffffff', fontSize: '24px' }"
       />
-    </div>
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, defineOptions } from 'vue';
+import { computed, defineOptions, ref } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faCopy, faEnvelope, type IconDefinition } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCopy, faEnvelope, type IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import {
   faFacebook,
+  faTwitter,
   faWhatsapp,
   faTelegram,
 } from '@fortawesome/free-brands-svg-icons';
@@ -167,6 +169,7 @@ export interface ShareButton {
   show: boolean;
   color?: string;
   iconColor?: string;
+  label?: string;
 }
 
 /**
@@ -218,17 +221,28 @@ const getShareUrl = (): string => {
   return `https://${shareName.value}.mediasfu.com/${shareName.value}/${props.meetingID}`;
 };
 
+const hasCopied = ref(false);
+
+const handleCopyShareLink = async () => {
+  try {
+    await navigator.clipboard.writeText(getShareUrl());
+    hasCopied.value = true;
+    window.setTimeout(() => {
+      hasCopied.value = false;
+    }, 2000);
+  } catch (error) {
+    console.error('Failed to copy to clipboard', error);
+  }
+};
+
 const defaultShareButtons = computed<ShareButton[]>(() => [
   {
-    icon: faCopy,
-    action: async () => {
-      try {
-        await navigator.clipboard.writeText(getShareUrl());
-      } catch (error) {
-        console.error('Failed to copy to clipboard', error);
-      }
-    },
+    icon: hasCopied.value ? faCheck : faCopy,
+    action: handleCopyShareLink,
     show: true,
+    color: hasCopied.value ? 'rgba(34, 197, 94, 0.18)' : 'rgba(99, 102, 241, 0.18)',
+    iconColor: hasCopied.value ? '#16a34a' : '#6366f1',
+    label: hasCopied.value ? 'Meeting link copied' : 'Copy meeting link',
   },
   {
     icon: faEnvelope,
@@ -237,6 +251,9 @@ const defaultShareButtons = computed<ShareButton[]>(() => [
       window.open(emailUrl, '_blank');
     },
     show: true,
+    color: 'rgba(239, 68, 68, 0.16)',
+    iconColor: '#ef4444',
+    label: 'Share by email',
   },
   {
     icon: faFacebook,
@@ -247,6 +264,22 @@ const defaultShareButtons = computed<ShareButton[]>(() => [
       window.open(facebookUrl, '_blank');
     },
     show: true,
+    color: 'rgba(59, 130, 246, 0.16)',
+    iconColor: '#2563eb',
+    label: 'Share on Facebook',
+  },
+  {
+    icon: faTwitter,
+    action: () => {
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        `Join my meeting: ${getShareUrl()}`
+      )}`;
+      window.open(twitterUrl, '_blank', 'width=600,height=400');
+    },
+    show: true,
+    color: 'rgba(56, 189, 248, 0.16)',
+    iconColor: '#0ea5e9',
+    label: 'Share on X',
   },
   {
     icon: faWhatsapp,
@@ -255,6 +288,9 @@ const defaultShareButtons = computed<ShareButton[]>(() => [
       window.open(whatsappUrl, '_blank');
     },
     show: true,
+    color: 'rgba(34, 197, 94, 0.16)',
+    iconColor: '#16a34a',
+    label: 'Share on WhatsApp',
   },
   {
     icon: faTelegram,
@@ -263,6 +299,9 @@ const defaultShareButtons = computed<ShareButton[]>(() => [
       window.open(telegramUrl, '_blank');
     },
     show: true,
+    color: 'rgba(14, 165, 233, 0.16)',
+    iconColor: '#0284c7',
+    label: 'Share on Telegram',
   },
 ]);
 
@@ -277,16 +316,33 @@ const filteredShareButtons = computed(() => {
 .share-buttons-container {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 10px 0;
+  max-width: 100%;
 }
 
 .share-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  border-radius: 5px;
-  margin: 0 5px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  flex: 0 0 auto;
   cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .share-buttons-container {
+    gap: 8px;
+  }
+
+  .share-button {
+    width: 40px;
+    height: 40px;
+  }
 }
 </style>

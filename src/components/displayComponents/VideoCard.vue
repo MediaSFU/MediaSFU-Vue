@@ -171,6 +171,35 @@
       </div>
     </div>
 
+    <div
+      v-if="resolvedShowSubtitles && resolvedLiveSubtitleText"
+      :style="{
+        position: 'absolute',
+        left: '8px',
+        right: '8px',
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: '6px 6px 0 0',
+        padding: '4px 8px',
+        zIndex: 3,
+      }"
+    >
+      <span
+        :style="{
+          color: '#ffffff',
+          fontSize: '12px',
+          fontWeight: 600,
+          textAlign: 'center',
+          display: 'block',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }"
+      >
+        {{ resolvedLiveSubtitleText }}
+      </span>
+    </div>
+
     <slot />
   </div>
 </template>
@@ -192,8 +221,7 @@ import {
   faVideo,
   faVideoSlash,
 } from '@fortawesome/free-solid-svg-icons';
-import { controlMedia } from '@legacy/consumers/controlMedia';
-import { getOverlayPosition } from '@legacy/methods/utils/getOverlayPosition';
+import { controlMedia, getOverlayPosition } from 'mediasfu-shared';
 import CardVideoDisplay, { type CardVideoDisplayProps } from './CardVideoDisplay.vue';
 import type {
   AudioDecibels,
@@ -403,6 +431,16 @@ export interface VideoCardProps {
    * Additional props to pass to the CardVideoDisplay component
    */
   videoDisplayProps?: Partial<CardVideoDisplayProps>;
+
+  /**
+   * Latest subtitle text for this card's speaker
+   */
+  liveSubtitleText?: string;
+
+  /**
+   * Whether subtitle overlay should be shown
+   */
+  showSubtitles?: boolean;
 }
 
 const props = withDefaults(defineProps<VideoCardProps>(), {
@@ -427,11 +465,35 @@ const props = withDefaults(defineProps<VideoCardProps>(), {
   waveformBarStyle: () => ({}),
   waveformBarClassName: undefined,
   videoDisplayProps: () => ({}),
+  liveSubtitleText: '',
+  showSubtitles: true,
 });
 
 const waveformAnimations = ref<number[]>(Array.from({ length: 9 }, () => 0));
 const showWaveformState = ref(true);
 let checkAudioInterval: ReturnType<typeof setInterval> | null = null;
+
+const latestSubtitleParams = computed(() =>
+  props.parameters?.getUpdatedAllParams?.() as {
+    showSubtitlesOnCards?: boolean;
+    getLiveSubtitleForSpeaker?: (speakerId: string, speakerName?: string) => { text?: string } | null;
+  } | undefined
+);
+
+const resolvedShowSubtitles = computed(
+  () => latestSubtitleParams.value?.showSubtitlesOnCards ?? props.showSubtitles,
+);
+
+const resolvedLiveSubtitleText = computed(() => {
+  const participantId = props.participant?.id || '';
+  const participantName = props.participant?.name || props.name;
+  const liveSubtitle = latestSubtitleParams.value?.getLiveSubtitleForSpeaker?.(
+    participantId,
+    participantName,
+  );
+
+  return liveSubtitle?.text ?? props.liveSubtitleText ?? '';
+});
 
 const getAnimationDuration = (index: number): number => {
   const durations = [474, 433, 407, 458, 400, 427, 441, 419, 487];

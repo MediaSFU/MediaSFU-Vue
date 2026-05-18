@@ -26,12 +26,14 @@ const DEFAULT_CONTAINER_STYLE: StyleDictionary = {
 
 export const useMediasfuDemo = (defaultEventType: EventType = 'webinar'): DemoState => {
   const credentials = reactive<Credentials>({
-    apiUserName: 'yourDevUser',
-    apiKey: 'yourDevApiKey1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME?.trim() || '',
+    apiKey: import.meta.env.VITE_MEDIASFU_API_KEY?.trim() || '',
   })
 
-  const localLink = ref('')
-  const connectMediaSFU = ref(true)
+  const localLink = ref(import.meta.env.VITE_MEDIASFU_LOCAL_LINK?.trim() || '')
+  const connectMediaSFU = ref(
+    localLink.value !== '' || (credentials.apiUserName !== '' && credentials.apiKey !== ''),
+  )
   const returnUI = ref(true)
   const useCustomComponent = ref(false)
   const useCustomCards = ref(false)

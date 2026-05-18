@@ -559,7 +559,7 @@ const handleScreenTransport = async () => {
   await disconnectSendTransportScreen({ parameters: params });
 };
 
-const stopAnnotation = async () => {
+async function stopAnnotation() {
   if (annotationInterval.value) {
     clearInterval(annotationInterval.value);
     annotationInterval.value = null;
@@ -578,9 +578,9 @@ const stopAnnotation = async () => {
       .getContext('2d')
       ?.clearRect(0, 0, mainScreenCanvas.width, mainScreenCanvas.height);
   }
-};
+}
 
-const stopAllTracks = async () => {
+async function stopAllTracks() {
   params = props.parameters.getUpdatedAllParams();
   const {
     localStreamScreen,
@@ -619,7 +619,7 @@ const stopAllTracks = async () => {
   }
 
   clonedStreamScreen.value = null;
-};
+}
 
 // Inline RenderVNode component
 const RenderVNode = defineComponent({

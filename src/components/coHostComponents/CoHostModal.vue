@@ -555,6 +555,11 @@ const handleSaveClick = (event: Event) => {
 
 // Build overlayNode
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Manage Co-Host' : props.title;
+  })();
+
   const { class: overlayClassName, ...restOverlayProps } = props.overlayProps ?? {};
   const { class: contentClassName, ...restContentProps } = props.contentProps ?? {};
   const { class: headerClassName, style: headerStyleOverrides, ...restHeaderProps } = props.headerProps ?? {};
@@ -626,7 +631,7 @@ const overlayNode = computed(() => {
           style: titleStyle,
           ...restTitleProps,
         },
-        [props.title]
+        [resolvedTitle]
       ),
       h(
         'button',
@@ -725,6 +730,25 @@ const overlayNode = computed(() => {
   const renderResponsibilitiesContent = () => {
     const { class: responsibilitiesWrapperClassName, style: responsibilitiesWrapperStyleOverrides, ...restResponsibilitiesWrapperProps } = props.responsibilitiesWrapperProps ?? {};
     const { class: responsibilitiesHeaderRowClassName, style: responsibilitiesHeaderRowStyleOverrides, ...restResponsibilitiesHeaderRowProps } = props.responsibilitiesHeaderRowProps ?? {};
+    const { class: responsibilityHeaderLabelClassName, style: responsibilityHeaderLabelStyleOverrides, ...restResponsibilityHeaderLabelProps } = props.responsibilityHeaderLabelProps ?? {};
+    const { class: responsibilitySelectHeaderClassName, style: responsibilitySelectHeaderStyleOverrides, ...restResponsibilitySelectHeaderProps } = props.responsibilitySelectHeaderProps ?? {};
+    const { class: responsibilityDedicatedHeaderClassName, style: responsibilityDedicatedHeaderStyleOverrides, ...restResponsibilityDedicatedHeaderProps } = props.responsibilityDedicatedHeaderProps ?? {};
+    const { class: responsibilityRowClassName, style: responsibilityRowStyleOverrides, ...restResponsibilityRowProps } = props.responsibilityRowProps ?? {};
+    const { class: responsibilityNameClassName, style: responsibilityNameStyleOverrides, ...restResponsibilityNameProps } = props.responsibilityNameProps ?? {};
+    const { class: responsibilitySelectClassName, style: responsibilitySelectStyleOverrides, ...restResponsibilitySelectProps } = props.responsibilitySelectProps ?? {};
+    const { class: responsibilityDedicatedClassName, style: responsibilityDedicatedStyleOverrides, ...restResponsibilityDedicatedProps } = props.responsibilityDedicatedProps ?? {};
+    const {
+      class: responsibilitySelectCheckboxClassName,
+      style: responsibilitySelectCheckboxStyleOverrides,
+      onChange: responsibilitySelectCheckboxOnChange,
+      ...restResponsibilitySelectCheckboxProps
+    } = props.responsibilitySelectCheckboxProps ?? {};
+    const {
+      class: responsibilityDedicatedCheckboxClassName,
+      style: responsibilityDedicatedCheckboxStyleOverrides,
+      onChange: responsibilityDedicatedCheckboxOnChange,
+      ...restResponsibilityDedicatedCheckboxProps
+    } = props.responsibilityDedicatedCheckboxProps ?? {};
     
     const responsibilitiesHeader = h(
       'div',
@@ -741,14 +765,26 @@ const overlayNode = computed(() => {
         ...restResponsibilitiesHeaderRowProps,
       },
       [
-        h('div', { class: 'col-5', style: { width: '41.67%' } }, [
-          h('label', { class: 'font-weight-bold' }, [props.responsibilityHeaderLabel]),
+        h('div', { class: 'col-5', style: { minWidth: 0 } }, [
+          h('label', {
+            class: joinClassNames('font-weight-bold', responsibilityHeaderLabelClassName as string | undefined),
+            style: responsibilityHeaderLabelStyleOverrides as CSSProperties ?? {},
+            ...restResponsibilityHeaderLabelProps,
+          }, [props.responsibilityHeaderLabel]),
         ]),
-        h('div', { class: 'col-3', style: { width: '25%', justifyContent: 'center', display: 'flex' } }, [
-          h('label', { class: 'font-weight-bold' }, [props.responsibilitySelectLabel]),
+        h('div', { class: 'col-3', style: { minWidth: 0, justifyContent: 'center', display: 'flex' } }, [
+          h('label', {
+            class: joinClassNames('font-weight-bold', responsibilitySelectHeaderClassName as string | undefined),
+            style: responsibilitySelectHeaderStyleOverrides as CSSProperties ?? {},
+            ...restResponsibilitySelectHeaderProps,
+          }, [props.responsibilitySelectLabel]),
         ]),
-        h('div', { class: 'col-4', style: { width: '33.33%', justifyContent: 'center', display: 'flex' } }, [
-          h('label', { class: 'font-weight-bold' }, [props.responsibilityDedicatedLabel]),
+        h('div', { class: 'col-4', style: { minWidth: 0, justifyContent: 'center', display: 'flex' } }, [
+          h('label', {
+            class: joinClassNames('font-weight-bold', responsibilityDedicatedHeaderClassName as string | undefined),
+            style: responsibilityDedicatedHeaderStyleOverrides as CSSProperties ?? {},
+            ...restResponsibilityDedicatedHeaderProps,
+          }, [props.responsibilityDedicatedLabel]),
         ]),
       ]
     );
@@ -764,30 +800,68 @@ const overlayNode = computed(() => {
         'div',
         {
           key: item.name,
-          class: 'responsibility-row',
+          class: joinClassNames('responsibility-row', responsibilityRowClassName as string | undefined),
           style: {
             display: 'flex',
             alignItems: 'center',
             marginBottom: '10px',
+            ...(responsibilityRowStyleOverrides as CSSProperties ?? {}),
           },
+          ...restResponsibilityRowProps,
         },
         [
-          h('div', { class: 'col-5 font-weight-bold', style: { width: '41.67%' } }, [item.label]),
-          h('div', { class: 'col-3', style: { width: '25%', justifyContent: 'center', display: 'flex' } }, [
+          h('div', {
+            class: joinClassNames('col-5 font-weight-bold', responsibilityNameClassName as string | undefined),
+            style: { minWidth: 0, ...(responsibilityNameStyleOverrides as CSSProperties ?? {}) },
+            ...restResponsibilityNameProps,
+          }, [item.label]),
+          h('div', {
+            class: joinClassNames('col-3', responsibilitySelectClassName as string | undefined),
+            style: { minWidth: 0, justifyContent: 'center', display: 'flex', ...(responsibilitySelectStyleOverrides as CSSProperties ?? {}) },
+            ...restResponsibilitySelectProps,
+          }, [
             h('input', {
               type: 'checkbox',
               checked: isSelected,
-              onChange: toggleSelect,
-              style: { width: '18px', height: '18px', cursor: 'pointer' },
+              onChange: (event: Event) => {
+                if (responsibilitySelectCheckboxOnChange) {
+                  responsibilitySelectCheckboxOnChange(event as unknown as Event);
+                }
+                if (!(event as Event & { defaultPrevented?: boolean }).defaultPrevented) {
+                  toggleSelect();
+                }
+              },
+              class: responsibilitySelectCheckboxClassName as string | undefined,
+              style: { width: '18px', height: '18px', cursor: 'pointer', ...(responsibilitySelectCheckboxStyleOverrides as CSSProperties ?? {}) },
+              ...restResponsibilitySelectCheckboxProps,
             }),
           ]),
-          h('div', { class: 'col-4', style: { width: '33.33%', justifyContent: 'center', display: 'flex' } }, [
+          h('div', {
+            class: joinClassNames('col-4', responsibilityDedicatedClassName as string | undefined),
+            style: { minWidth: 0, justifyContent: 'center', display: 'flex', ...(responsibilityDedicatedStyleOverrides as CSSProperties ?? {}) },
+            ...restResponsibilityDedicatedProps,
+          }, [
             h('input', {
               type: 'checkbox',
               checked: isDedicated,
               disabled: !isSelected,
-              onChange: toggleDedicated,
-              style: { width: '18px', height: '18px', cursor: !isSelected ? 'not-allowed' : 'pointer', opacity: !isSelected ? 0.5 : 1 },
+              onChange: (event: Event) => {
+                if (responsibilityDedicatedCheckboxOnChange) {
+                  responsibilityDedicatedCheckboxOnChange(event as unknown as Event);
+                }
+                if (!(event as Event & { defaultPrevented?: boolean }).defaultPrevented) {
+                  toggleDedicated();
+                }
+              },
+              class: responsibilityDedicatedCheckboxClassName as string | undefined,
+              style: {
+                width: '18px',
+                height: '18px',
+                cursor: !isSelected ? 'not-allowed' : 'pointer',
+                opacity: !isSelected ? 0.5 : 1,
+                ...(responsibilityDedicatedCheckboxStyleOverrides as CSSProperties ?? {}),
+              },
+              ...restResponsibilityDedicatedCheckboxProps,
             }),
           ]),
         ]

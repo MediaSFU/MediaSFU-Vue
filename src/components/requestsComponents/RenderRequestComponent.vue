@@ -84,18 +84,28 @@
     }"
   >
     <div :style="{ flex: 5 }">
-      <span>{{ request.name }}</span>
+      <span :style="{ color: 'var(--ms-modern-text-primary, #0f172a)', fontWeight: 600 }">{{ request.name }}</span>
     </div>
     <div :style="{ flex: 2, alignItems: 'center' }">
       <font-awesome-icon
         :icon="keyMap[request.icon]"
         size="lg"
-        color="black"
+        color="var(--ms-modern-text-secondary, #475569)"
       />
     </div>
     <div :style="{ flex: 2, alignItems: 'center', paddingRight: '10px' }">
       <button
-        :style="{ background: 'none', border: 'none', cursor: 'pointer' }"
+        :style="{
+          width: '34px',
+          height: '34px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--ms-modern-field-background, rgba(255, 255, 255, 0.92))',
+          border: '1px solid var(--ms-modern-panel-border, rgba(148, 163, 184, 0.24))',
+          borderRadius: '9999px',
+          cursor: 'pointer',
+        }"
         @click="handleRequestAction('accepted')"
       >
         <font-awesome-icon
@@ -107,7 +117,17 @@
     </div>
     <div :style="{ flex: 2, alignItems: 'center' }">
       <button
-        :style="{ background: 'none', border: 'none', cursor: 'pointer' }"
+        :style="{
+          width: '34px',
+          height: '34px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--ms-modern-field-background, rgba(255, 255, 255, 0.92))',
+          border: '1px solid var(--ms-modern-panel-border, rgba(148, 163, 184, 0.24))',
+          borderRadius: '9999px',
+          cursor: 'pointer',
+        }"
         @click="handleRequestAction('rejected')"
       >
         <font-awesome-icon

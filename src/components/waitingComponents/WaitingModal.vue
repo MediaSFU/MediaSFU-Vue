@@ -388,7 +388,7 @@ const props = withDefaults(defineProps<WaitingRoomModalProps>(), {
   position: 'topRight',
   backgroundColor: '#83c0e9',
   onWaitingRoomItemPress: undefined,
-  title: () => 'Waiting',
+  title: () => 'Waiting Room',
   overlayProps: undefined,
   contentProps: undefined,
   headerProps: undefined,
@@ -526,10 +526,20 @@ const contentStyle = computed<CSSProperties>(() => ({
   ...contentAttrs.value.style,
 }));
 
+const resolvedTitle = computed<VNodeChild>(() => {
+  const title = props.title as unknown;
+  return title === false || title == null ? 'Waiting Room' : props.title;
+});
+
 const handleFilterChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const inputProps = props.searchInputProps as Record<string, unknown> | undefined;
+  const inputOnInput = inputProps?.onInput as ((event: Event) => void) | undefined;
   const inputOnChange = inputProps?.onChange as ((event: Event) => void) | undefined;
+
+  if (inputOnInput) {
+    inputOnInput(event);
+  }
   
   if (inputOnChange) {
     inputOnChange(event);
@@ -541,11 +551,292 @@ const handleFilterChange = (event: Event) => {
   }
 };
 
+const handleCloseClick = (event: Event) => {
+  const buttonProps = props.closeButtonProps as Record<string, unknown> | undefined;
+  const onClick = buttonProps?.onClick as ((event: Event) => void) | undefined;
+
+  if (onClick) {
+    onClick(event);
+  }
+
+  if (!(event as Event & { defaultPrevented?: boolean }).defaultPrevented) {
+    props.onWaitingRoomClose();
+  }
+};
+
 const onWaitingRoomItemPressHandler = props.onWaitingRoomItemPress ?? respondToWaiting;
 
 // Simplified node building - createOverlayNode that contains everything
 const overlayNode = computed<VNodeChild>(() => {
   if (!props.isWaitingModalVisible) return null;
+
+  const { class: headerClassName, style: headerStyleOverrides, ...restHeaderProps } = props.headerProps ?? {};
+  const { class: titleClassName, style: titleStyleOverrides, ...restTitleProps } = props.titleProps ?? {};
+  const { class: badgeWrapperClassName, style: badgeWrapperStyleOverrides, ...restBadgeWrapperProps } = props.badgeWrapperProps ?? {};
+  const { class: badgeClassName, style: badgeStyleOverrides, ...restBadgeProps } = props.badgeProps ?? {};
+  const {
+    class: closeButtonClassName,
+    style: closeButtonStyleOverrides,
+    onClick: _closeButtonOnClick,
+    ...restCloseButtonProps
+  } = props.closeButtonProps ?? {};
+  const { class: bodyClassName, style: bodyStyleOverrides, ...restBodyProps } = props.bodyProps ?? {};
+  const { class: searchWrapperClassName, style: searchWrapperStyleOverrides, ...restSearchWrapperProps } = props.searchWrapperProps ?? {};
+  const {
+    class: searchInputClassName,
+    style: searchInputStyleOverrides,
+    onInput: _searchInputOnInput,
+    onChange: _searchInputOnChange,
+    ...restSearchInputProps
+  } = props.searchInputProps ?? {};
+  const { class: waitingListClassName, style: waitingListStyleOverrides, ...restWaitingListProps } = props.waitingListProps ?? {};
+  const { class: participantRowClassName, style: participantRowStyleOverrides, ...restParticipantRowProps } = props.participantRowProps ?? {};
+  const {
+    class: acceptButtonClassName,
+    style: acceptButtonStyleOverrides,
+    ...restAcceptButtonProps
+  } = props.acceptButtonProps ?? {};
+  const {
+    class: rejectButtonClassName,
+    style: rejectButtonStyleOverrides,
+    ...restRejectButtonProps
+  } = props.rejectButtonProps ?? {};
+
+  const closeIconComponent = props.closeIconComponent as unknown;
+  const defaultCloseIcon = closeIconComponent === false || closeIconComponent == null
+    ? h(FontAwesomeIcon, { icon: faTimes, style: { fontSize: '20px' } })
+    : props.closeIconComponent;
+
+  const handleFilterValue = (value: string) => {
+    props.onWaitingRoomFilterChange(value);
+    rerenderToggle.value = !rerenderToggle.value;
+  };
+
+  const defaultHeaderNode = h('div', {
+    class: joinClassNames('modal-header', headerClassName as string | undefined),
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '15px',
+      ...(headerStyleOverrides as CSSProperties ?? {}),
+    },
+    ...restHeaderProps,
+  }, [
+    h('div', {
+      class: joinClassNames('modal-title', titleClassName as string | undefined),
+      style: {
+        fontSize: '18px',
+        fontWeight: 'bold',
+        color: 'black',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        ...(titleStyleOverrides as CSSProperties ?? {}),
+      },
+      ...restTitleProps,
+    }, [
+      isVNode(resolvedTitle.value) ? resolvedTitle.value : String(resolvedTitle.value),
+      h('span', {
+        class: joinClassNames('waiting-counter', badgeWrapperClassName as string | undefined),
+        style: {
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '3px',
+          borderRadius: '9999px',
+          ...(badgeWrapperStyleOverrides as CSSProperties ?? {}),
+        },
+        ...restBadgeWrapperProps,
+      }, [
+        h('span', {
+          style: {
+            backgroundColor: '#fff',
+            color: '#000',
+            borderRadius: '10px',
+            padding: '5px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...(badgeStyleOverrides as CSSProperties ?? {}),
+          },
+          class: joinClassNames('badge', badgeClassName as string | undefined),
+          ...restBadgeProps,
+        }, String(waitingRoomCounterState.value)),
+      ]),
+    ]),
+    h('button', {
+      type: 'button',
+      onClick: handleCloseClick,
+      style: {
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        padding: '4px',
+        color: 'black',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...(closeButtonStyleOverrides as CSSProperties ?? {}),
+      },
+      class: joinClassNames('btn-close-waitings', closeButtonClassName as string | undefined),
+      ...restCloseButtonProps,
+    }, [
+      defaultCloseIcon,
+    ]),
+  ]);
+
+  const headerNode = props.renderHeader
+    ? props.renderHeader({
+        defaultHeader: defaultHeaderNode,
+        counter: waitingRoomCounterState.value,
+        onClose: props.onWaitingRoomClose,
+      })
+    : defaultHeaderNode;
+
+  const defaultSearchNode = h('div', {
+    class: joinClassNames('form-group', searchWrapperClassName as string | undefined),
+    style: searchWrapperStyleOverrides as CSSProperties | undefined,
+    ...restSearchWrapperProps,
+  }, [
+    h('input', {
+      type: 'text',
+      placeholder: 'Search ...',
+      onInput: handleFilterChange,
+      class: searchInputClassName as string | undefined,
+      style: {
+        width: '90%',
+        padding: '10px',
+        borderRadius: '5px',
+        border: '1px solid #000',
+        fontSize: '16px',
+        marginBottom: '10px',
+        ...(searchInputStyleOverrides as CSSProperties ?? {}),
+      },
+      ...restSearchInputProps,
+    }),
+  ]);
+
+  const searchNode = props.renderSearch
+    ? props.renderSearch({
+        defaultSearch: defaultSearchNode,
+        onFilter: handleFilterValue,
+      })
+    : defaultSearchNode;
+
+  const renderParticipantRow = (participant: WaitingRoomParticipant, index: number) => {
+    const handleAccept = () => {
+      onWaitingRoomItemPressHandler({
+        participantId: participant.id,
+        participantName: participant.name,
+        updateWaitingList: props.updateWaitingList,
+        waitingList: waitingRoomListState.value,
+        roomName: props.roomName,
+        type: true,
+        socket: props.socket,
+      });
+    };
+
+    const handleReject = () => {
+      onWaitingRoomItemPressHandler({
+        participantId: participant.id,
+        participantName: participant.name,
+        updateWaitingList: props.updateWaitingList,
+        waitingList: waitingRoomListState.value,
+        roomName: props.roomName,
+        type: false,
+        socket: props.socket,
+      });
+    };
+
+    const defaultParticipantNode = h('div', {
+      key: participant.id || index,
+      class: joinClassNames('waiting-item', participantRowClassName as string | undefined),
+      style: {
+        marginTop: '5px',
+        flexDirection: 'row',
+        flex: 1,
+        display: 'flex',
+        ...(participantRowStyleOverrides as CSSProperties ?? {}),
+      },
+      ...restParticipantRowProps,
+    }, [
+      h('div', { class: 'col7', style: { flex: 5, justifyContent: 'center' } }, participant.name),
+      h('div', { class: 'col2', style: { flex: 2, alignItems: 'center', justifyContent: 'center' } }, [
+        h('button', {
+          type: 'button',
+          class: acceptButtonClassName as string | undefined,
+          style: {
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(acceptButtonStyleOverrides as CSSProperties ?? {}),
+          },
+          ...restAcceptButtonProps,
+          onClick: handleAccept,
+        }, [
+          ((props.acceptIconComponent as unknown) === false || (props.acceptIconComponent as unknown) == null)
+            ? h(FontAwesomeIcon, { icon: faCheck, size: 'lg', color: 'green' })
+            : props.acceptIconComponent,
+        ]),
+      ]),
+      h('div', { class: 'col2', style: { flex: 2, alignItems: 'center', justifyContent: 'center' } }, [
+        h('button', {
+          type: 'button',
+          class: rejectButtonClassName as string | undefined,
+          style: {
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            ...(rejectButtonStyleOverrides as CSSProperties ?? {}),
+          },
+          ...restRejectButtonProps,
+          onClick: handleReject,
+        }, [
+          ((props.rejectIconComponent as unknown) === false || (props.rejectIconComponent as unknown) == null)
+            ? h(FontAwesomeIcon, { icon: faTimes, size: 'lg', color: 'red' })
+            : props.rejectIconComponent,
+        ]),
+      ]),
+      h('div', { class: 'col1', style: { flex: 1 } }),
+    ]);
+
+    return props.renderParticipant
+      ? props.renderParticipant({
+          participant,
+          index,
+          defaultParticipant: defaultParticipantNode,
+          handleAccept,
+          handleReject,
+        })
+      : defaultParticipantNode;
+  };
+
+  const waitingListNode = h('div', {
+    class: joinClassNames('waiting-list', waitingListClassName as string | undefined),
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      ...(waitingListStyleOverrides as CSSProperties ?? {}),
+    },
+    ...restWaitingListProps,
+  }, waitingRoomListState.value.length === 0
+    ? [
+        typeof props.emptyState === 'function'
+          ? props.emptyState({ counter: waitingRoomCounterState.value })
+          : props.emptyState ?? h('p', { style: { textAlign: 'center', color: 'black' } }, 'No participants waiting'),
+      ]
+    : waitingRoomListState.value.map((participant, index) => renderParticipantRow(participant, index)));
+
+  const defaultBodyNode = h('div', {
+    class: joinClassNames('modal-body', bodyClassName as string | undefined),
+    style: bodyStyleOverrides as CSSProperties | undefined,
+    ...restBodyProps,
+  }, [searchNode, waitingListNode]);
+
+  const bodyNode = props.renderBody
+    ? props.renderBody({ defaultBody: defaultBodyNode, counter: waitingRoomCounterState.value })
+    : defaultBodyNode;
 
   return h(
     'div',
@@ -563,111 +854,12 @@ const overlayNode = computed<VNodeChild>(() => {
           ...contentAttrs.value.rest,
         },
         [
-          // Header with title and badge
-          h('div', { class: 'modal-header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' } }, [
-            h('div', { class: 'modal-title', style: { fontSize: '18px', fontWeight: 'bold', color: 'black', display: 'flex', alignItems: 'center', gap: '8px' } }, [
-              isVNode(props.title) ? props.title : String(props.title),
-              h('span', {
-                style: {
-                  backgroundColor: '#fff',
-                  color: '#000',
-                  borderRadius: '10px',
-                  padding: '5px',
-                },
-                class: 'badge',
-              }, String(waitingRoomCounterState.value)),
-            ]),
-            h('button', {
-              type: 'button',
-              onClick: props.onWaitingRoomClose,
-              style: { background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'black' },
-              class: 'btn-close-waitings',
-            }, [
-              props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, style: { fontSize: '20px', color: 'black' } }),
-            ]),
-          ]),
+          headerNode,
           
           // Divider
           h('hr', { style: { height: '1px', backgroundColor: 'black', margin: '5px 0', border: 'none' } }),
           
-          // Body
-          h('div', { class: 'modal-body' }, [
-            // Search input
-            h('div', { class: 'form-group' }, [
-              h('input', {
-                type: 'text',
-                placeholder: 'Search ...',
-                onInput: handleFilterChange,
-                style: {
-                  width: '90%',
-                  padding: '10px',
-                  borderRadius: '5px',
-                  border: '1px solid #000',
-                  fontSize: '16px',
-                  marginBottom: '10px',
-                },
-                ...props.searchInputProps,
-              }),
-            ]),
-            
-            // Waiting list
-            h('div', { class: 'waiting-list', style: { display: 'flex', flexDirection: 'column' } }, 
-              waitingRoomListState.value.length === 0
-                ? [
-                    typeof props.emptyState === 'function'
-                      ? props.emptyState({ counter: waitingRoomCounterState.value })
-                      : props.emptyState ?? h('p', { style: { textAlign: 'center', color: 'black' } }, 'No participants waiting')
-                  ]
-                : waitingRoomListState.value.map((participant, index) =>
-                    h('div', {
-                      key: participant.id || index,
-                      class: 'waiting-item',
-                      style: { marginTop: '5px', flexDirection: 'row', flex: 1, display: 'flex' },
-                    }, [
-                      h('div', { class: 'col7', style: { flex: 5, justifyContent: 'center' } }, participant.name),
-                      h('div', { class: 'col2', style: { flex: 2, alignItems: 'center', justifyContent: 'center' } }, [
-                        h('button', {
-                          type: 'button',
-                          style: { background: 'none', border: 'none', cursor: 'pointer' },
-                          onClick: () => {
-                            onWaitingRoomItemPressHandler({
-                              participantId: participant.id,
-                              participantName: participant.name,
-                              updateWaitingList: props.updateWaitingList,
-                              waitingList: waitingRoomListState.value,
-                              roomName: props.roomName,
-                              type: true,
-                              socket: props.socket,
-                            });
-                          },
-                        }, [
-                          props.acceptIconComponent ?? h(FontAwesomeIcon, { icon: faCheck, size: 'lg', color: 'green' }),
-                        ]),
-                      ]),
-                      h('div', { class: 'col2', style: { flex: 2, alignItems: 'center', justifyContent: 'center' } }, [
-                        h('button', {
-                          type: 'button',
-                          style: { background: 'none', border: 'none', cursor: 'pointer' },
-                          onClick: () => {
-                            onWaitingRoomItemPressHandler({
-                              participantId: participant.id,
-                              participantName: participant.name,
-                              updateWaitingList: props.updateWaitingList,
-                              waitingList: waitingRoomListState.value,
-                              roomName: props.roomName,
-                              type: false,
-                              socket: props.socket,
-                            });
-                          },
-                        }, [
-                          props.rejectIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'lg', color: 'red' }),
-                        ]),
-                      ]),
-                      h('div', { class: 'col1', style: { flex: 1 } }),
-                    ])
-                  )
-            ),
-          ]),
+          bodyNode,
         ]
       ),
     ]

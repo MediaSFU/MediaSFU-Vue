@@ -5,6 +5,8 @@
       ref="audioRef"
       autoplay
       playsinline
+      data-mini-audio-player="true"
+      :data-producer-id="remoteProducerId"
     />
     <component
       :is="resolvedMiniAudioComponent"
@@ -19,6 +21,13 @@ import { ref, computed, watch, onBeforeUnmount, nextTick, type CSSProperties, ty
 import MiniAudio from '../../../components/displayComponents/MiniAudio.vue';
 import type { Consumer } from 'mediasoup-client';
 import type { BreakoutParticipant, Participant } from '../../../../../SharedTypes';
+
+interface SpeakerTranslationState {
+  enabled?: boolean;
+  speakerId?: string;
+  speakerName?: string;
+  originalProducerId?: string;
+}
 
 interface MiniAudioPlayerParameters {
   breakOutRoomStarted: boolean;
@@ -78,6 +87,7 @@ const containerStyle: CSSProperties = {
 };
 
 let intervalId: number | null = null;
+let audioStateRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
 const stopMonitoring = () => {
   if (intervalId !== null) {
@@ -86,22 +96,145 @@ const stopMonitoring = () => {
   }
 };
 
-const setAudioSource = (stream: MediaStream | null) => {
-  nextTick(() => {
-    const element = audioRef.value;
-    if (!element) {
+const clearAudioStateRetryTimer = () => {
+  if (audioStateRetryTimer) {
+    clearTimeout(audioStateRetryTimer);
+    audioStateRetryTimer = null;
+  }
+};
+
+const getUpdatedParams = () =>
+  (props.parameters.getUpdatedAllParams?.() ?? props.parameters) as MiniAudioPlayerParameters & Record<string, unknown>;
+
+const getParticipantForProducer = (
+  updatedParams: MiniAudioPlayerParameters & Record<string, unknown>,
+) => (updatedParams.participants as Participant[] | undefined)?.find(
+  (participant) => participant.audioID === props.remoteProducerId,
+);
+
+const getSpeakerNameForProducer = (
+  updatedParams: MiniAudioPlayerParameters & Record<string, unknown>,
+  participant?: Participant,
+) => {
+  if (participant?.name) {
+    return participant.name;
+  }
+
+  const propName = typeof props.miniAudioProps?.name === 'string'
+    ? props.miniAudioProps.name
+    : undefined;
+  if (propName) {
+    return propName;
+  }
+
+  const namedStream = (updatedParams.audStreamNames as Array<{ producerId?: string; name?: string }> | undefined)
+    ?.find((stream) => stream.producerId === props.remoteProducerId && typeof stream.name === 'string');
+  if (namedStream?.name) {
+    return namedStream.name;
+  }
+
+  return (updatedParams.allAudioStreams as Array<{ producerId?: string; name?: string }> | undefined)
+    ?.find((stream) => stream.producerId === props.remoteProducerId && typeof stream.name === 'string')
+    ?.name;
+};
+
+const isTranslationSuppressingOriginal = (
+  updatedParams: MiniAudioPlayerParameters & Record<string, unknown>,
+  participant?: Participant,
+) => {
+  const activeTranslationProducerIds = updatedParams.activeTranslationProducerIds as Set<string> | undefined;
+  if (activeTranslationProducerIds?.has(props.remoteProducerId)) {
+    return false;
+  }
+
+  const speakerTranslationStates = updatedParams.speakerTranslationStates as
+    | Map<string, SpeakerTranslationState>
+    | undefined;
+  const speakerName = getSpeakerNameForProducer(updatedParams, participant);
+
+  if (!speakerTranslationStates?.size) {
+    return false;
+  }
+
+  if (speakerName) {
+    const speakerState = speakerTranslationStates.get(speakerName);
+
+    if (speakerState?.enabled) {
+      return true;
+    }
+  }
+
+  return Array.from(speakerTranslationStates.values()).some((speakerState) => {
+    if (!speakerState?.enabled) {
+      return false;
+    }
+
+    if (speakerState.originalProducerId === props.remoteProducerId) {
+      return true;
+    }
+
+    if (!speakerName) {
+      return false;
+    }
+
+    return (
+      speakerState.speakerId === speakerName ||
+      speakerState.speakerName === speakerName
+    );
+  });
+};
+
+const applyAudioElementState = (
+  stream: MediaStream | null,
+  updatedParams: MiniAudioPlayerParameters & Record<string, unknown> = getUpdatedParams(),
+  participant: Participant | undefined = getParticipantForProducer(updatedParams),
+) => {
+  const element = audioRef.value;
+  if (!element) {
+    return false;
+  }
+
+  if (element.srcObject !== stream) {
+    element.srcObject = stream;
+  }
+
+  const translationSuppressingOriginal = isTranslationSuppressingOriginal(updatedParams, participant);
+  element.muted = translationSuppressingOriginal;
+
+  if (!stream || translationSuppressingOriginal) {
+    element.pause();
+    return translationSuppressingOriginal;
+  }
+
+  const playPromise = element.play?.();
+  if (playPromise instanceof Promise) {
+    playPromise.catch(() => {
+      /* ignore autoplay rejection */
+    });
+  }
+
+  return false;
+};
+
+const scheduleAudioStateSync = (stream: MediaStream | null) => {
+  clearAudioStateRetryTimer();
+
+  let attempts = 0;
+  const maxAttempts = 8;
+
+  const run = () => {
+    audioStateRetryTimer = null;
+    applyAudioElementState(stream);
+
+    if (!stream || attempts >= maxAttempts) {
       return;
     }
-    element.srcObject = stream;
-    if (stream) {
-      const playPromise = element.play?.();
-      if (playPromise instanceof Promise) {
-        playPromise.catch(() => {
-          /* ignore autoplay rejection */
-        });
-      }
-    }
-  });
+
+    attempts += 1;
+    audioStateRetryTimer = setTimeout(run, 120);
+  };
+
+  nextTick(run);
 };
 
 const startMonitoring = () => {
@@ -165,6 +298,7 @@ const startMonitoring = () => {
       : [];
     const displayedNames = Array.isArray(dispActiveNames) ? dispActiveNames : [];
     const participant = (participants as Participant[]).find((obj) => obj.audioID === props.remoteProducerId);
+    const translationSuppressingOriginal = applyAudioElementState(props.stream, updatedParams, participant);
 
     let audioActiveInRoom = true;
     if (participant && breakOutRoomStarted && !breakOutRoomEnded) {
@@ -172,6 +306,15 @@ const startMonitoring = () => {
       if (participant.name && !restrictedNames.has(participant.name)) {
         audioActiveInRoom = false;
       }
+    }
+
+    if (translationSuppressingOriginal) {
+      showWaveModal.value = false;
+      if (participant?.name && activeSounds.includes(participant.name)) {
+        activeSounds.splice(activeSounds.indexOf(participant.name), 1);
+        updateActiveSounds?.(activeSounds);
+      }
+      return;
     }
 
     if (meetingDisplayType !== 'video') {
@@ -301,7 +444,7 @@ const startMonitoring = () => {
 watch(
   () => props.stream,
   (stream) => {
-    setAudioSource(stream);
+    scheduleAudioStateSync(stream);
     if (stream) {
       startMonitoring();
     } else {
@@ -317,6 +460,7 @@ watch(
   () => props.consumer,
   () => {
     if (props.stream) {
+      scheduleAudioStateSync(props.stream);
       startMonitoring();
     }
   }
@@ -324,6 +468,7 @@ watch(
 
 onBeforeUnmount(() => {
   stopMonitoring();
+  clearAudioStateRetryTimer();
 });
 </script>
 

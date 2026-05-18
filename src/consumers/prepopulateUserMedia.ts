@@ -53,6 +53,7 @@ export interface PrepopulateUserMediaParameters {
   customVideoCard?: unknown;
   customAudioCard?: unknown;
   customMiniCard?: unknown;
+  isDarkModeValue?: boolean;
   
   // Override-provided component references
   videoCardComponent?: typeof VideoCard;
@@ -136,6 +137,13 @@ export const prepopulateUserMedia = async ({
     } = parameters;
 
     const newComponents: RenderableComponent[] = [];
+    const textColorThemed = 'var(--ms-modern-text-primary)';
+    const themedBorder =
+      eventType !== 'broadcast'
+        ? '2px solid var(--ms-modern-panel-border)'
+        : '0px solid transparent';
+    const themeSuffix = parameters.isDarkModeValue === false ? '-light' : '-dark';
+    const withThemeSuffix = (key: string) => `${key}${themeSuffix}`;
 
     if (eventType === 'chat') {
       return;
@@ -216,10 +224,10 @@ export const prepopulateUserMedia = async ({
               showControls: false,
               showInfo: true,
               name: host.name || '',
-              backgroundColor: 'rgba(217, 227, 234, 0.99)',
+              backgroundColor: 'transparent',
               parameters,
             },
-            key: host.ScreenID || `custom-video-${host.name ?? Date.now()}`,
+            key: withThemeSuffix(host.ScreenID || `custom-video-${host.name ?? Date.now()}`),
           });
         } else {
           newComponents.push({
@@ -230,16 +238,16 @@ export const prepopulateUserMedia = async ({
               eventType,
               forceFullDisplay: annotateScreenStream && shared ? false : screenForceFullDisplay,
               customStyle: {
-                border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                border: themedBorder,
               },
               participant: host,
-              backgroundColor: 'rgba(217, 227, 234, 0.99)',
+              backgroundColor: 'transparent',
               showControls: false,
               showInfo: true,
               name: host.name || '',
               parameters,
             },
-            key: host.ScreenID || `screen-${host.name ?? Date.now()}`,
+            key: withThemeSuffix(host.ScreenID || `screen-${host.name ?? Date.now()}`),
           });
         }
 
@@ -275,7 +283,7 @@ export const prepopulateUserMedia = async ({
               fontSize: 20,
               customStyle: {
                 backgroundColor: 'transparent',
-                border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                border: themedBorder,
               },
             }
           : {
@@ -283,7 +291,7 @@ export const prepopulateUserMedia = async ({
               fontSize: 20,
               customStyle: {
                 backgroundColor: 'transparent',
-                border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                border: themedBorder,
               },
             },
         key: `mini-${name}-${Date.now()}`,
@@ -323,10 +331,10 @@ export const prepopulateUserMedia = async ({
                 showControls: false,
                 showInfo: true,
                 name: host.name || '',
-                backgroundColor: 'rgba(217, 227, 234, 0.99)',
+                backgroundColor: 'transparent',
                 parameters,
               },
-              key: host.videoID || `custom-video-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(host.videoID || `custom-video-${host.name ?? Date.now()}`),
             });
           } else {
             newComponents.push({
@@ -337,17 +345,17 @@ export const prepopulateUserMedia = async ({
                 eventType,
                 forceFullDisplay,
                 customStyle: {
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 participant: host,
-                backgroundColor: 'rgba(217, 227, 234, 0.99)',
+                backgroundColor: 'transparent',
                 showControls: false,
                 showInfo: true,
                 name: host.name || '',
                 doMirror: true,
                 parameters,
               },
-              key: host.videoID || `video-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(host.videoID || `video-${host.name ?? Date.now()}`),
             });
           }
 
@@ -374,10 +382,10 @@ export const prepopulateUserMedia = async ({
               props: {
                 name: host.name || '',
                 barColor: 'red',
-                textColor: 'white',
+                textColor: textColorThemed,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 controlsPosition: 'topLeft',
                 infoPosition: 'topRight',
@@ -387,7 +395,7 @@ export const prepopulateUserMedia = async ({
                 showControls: true,
                 participant: host,
               },
-              key: `custom-audio-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(`custom-audio-${host.name ?? Date.now()}`),
             });
           } else {
             newComponents.push({
@@ -395,10 +403,10 @@ export const prepopulateUserMedia = async ({
               props: {
                 name: host.name || '',
                 barColor: 'red',
-                textColor: 'white',
+                textColor: textColorThemed,
                 customStyle: {
                   backgroundColor: 'transparent',
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 controlsPosition: 'topLeft',
                 infoPosition: 'topRight',
@@ -407,7 +415,7 @@ export const prepopulateUserMedia = async ({
                 parameters,
                 participant: host,
               },
-              key: `audio-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(`audio-${host.name ?? Date.now()}`),
             });
           }
 
@@ -427,7 +435,7 @@ export const prepopulateUserMedia = async ({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 }
               : {
@@ -435,7 +443,7 @@ export const prepopulateUserMedia = async ({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
             key: `mini-${name}-${Date.now()}`,
@@ -476,10 +484,10 @@ export const prepopulateUserMedia = async ({
                 showControls: false,
                 showInfo: true,
                 name: host.name || '',
-                backgroundColor: 'rgba(217, 227, 234, 0.99)',
+                backgroundColor: 'transparent',
                 parameters,
               },
-              key: host.videoID || `custom-video-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(host.videoID || `custom-video-${host.name ?? Date.now()}`),
             });
           } else {
             newComponents.push({
@@ -490,17 +498,17 @@ export const prepopulateUserMedia = async ({
                 eventType,
                 forceFullDisplay,
                 customStyle: {
-                  border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                  border: themedBorder,
                 },
                 participant: host,
-                backgroundColor: 'rgba(217, 227, 234, 0.99)',
+                backgroundColor: 'transparent',
                 showControls: false,
                 showInfo: true,
                 name: host.name || '',
                 doMirror: member === host.name,
                 parameters,
               },
-              key: host.videoID || `video-${host.name ?? Date.now()}`,
+              key: withThemeSuffix(host.videoID || `video-${host.name ?? Date.now()}`),
             });
           }
 
@@ -517,7 +525,7 @@ export const prepopulateUserMedia = async ({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 }
               : {
@@ -525,7 +533,7 @@ export const prepopulateUserMedia = async ({
                   fontSize: 20,
                   customStyle: {
                     backgroundColor: 'transparent',
-                    border: eventType !== 'broadcast' ? '2px solid black' : '0px solid black',
+                    border: themedBorder,
                   },
                 },
             key: `mini-${name}-${Date.now()}`,

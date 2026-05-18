@@ -19,8 +19,7 @@
     "**/main.ts",
     "**/*.spec.ts",
     "**/*.test.ts",
-    "**/node_modules/**",
-    "**/react-legacy/**"
+    "**/node_modules/**"
   ],
   "out": "docs",
   "skipErrorChecking": true,

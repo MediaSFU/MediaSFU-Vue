@@ -143,7 +143,7 @@ const props = withDefaults(defineProps<AudioGridProps>(), {
 
 const containerBaseStyle: CSSProperties = {
   display: 'grid',
-  gap: '12px',
+  gap: '1px',
   zIndex: 9,
 };
 

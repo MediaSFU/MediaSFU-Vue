@@ -469,6 +469,11 @@ const contentClassName = computed(() =>
 
 // Main overlay node
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Messages' : props.title;
+  })();
+
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, size: 'xl' })
   
   const defaultTitleNode = h('div', {
@@ -482,7 +487,7 @@ const overlayNode = computed(() => {
     ...(props.titleProps ? Object.fromEntries(
       Object.entries(props.titleProps).filter(([key]) => !['class', 'style'].includes(key))
     ) : {})
-  }, typeof props.title === 'string' || typeof props.title === 'number' ? [props.title] : (props.title || []))
+  }, typeof resolvedTitle === 'string' || typeof resolvedTitle === 'number' ? [resolvedTitle] : (resolvedTitle || []))
   
   const defaultHeaderNode = h('div', {
     class: joinClassNames(['modal-header', props.headerProps?.class as string]),

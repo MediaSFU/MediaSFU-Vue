@@ -134,7 +134,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, type CSSProperties } from 'vue';
-import { getOverlayPosition } from '@legacy/methods/utils/getOverlayPosition';
+import { getOverlayPosition } from 'mediasfu-shared';
 
 /**
  * Props for the MiniCardAudio component

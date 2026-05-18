@@ -123,10 +123,10 @@ export interface MiniCardProps {
   initials?: string;
   
   /**
-   * Font size for initials in pixels
+    * Font size for initials in pixels or as a CSS font-size value
    * @default 14
    */
-  fontSize?: number;
+    fontSize?: number | string;
   
   /**
    * Custom CSS styles for the outer container
@@ -284,6 +284,18 @@ function joinClassNames(...classes: (string | string[] | undefined)[]): string[]
   return result;
 }
 
+function normalizeFontSize(fontSize: MiniCardProps['fontSize'], fallback = 14): string {
+  if (typeof fontSize === 'number') {
+    return `${fontSize}px`;
+  }
+
+  if (typeof fontSize === 'string' && fontSize.trim().length > 0) {
+    return fontSize;
+  }
+
+  return `${fallback}px`;
+}
+
 const styles: Record<string, CSSProperties> = {
   miniCard: {
     display: 'flex',
@@ -337,7 +349,7 @@ const containerClassNames = computed(() =>
 
 const containerStyle = computed(() => ({
   ...styles.miniCard,
-  fontSize: `${props.fontSize || 14}px`,
+  fontSize: normalizeFontSize(props.fontSize, 14),
   ...props.customStyle,
   ...(typeof props.containerProps?.style === 'object' ? props.containerProps.style : {}),
 } as CSSProperties));
@@ -392,7 +404,7 @@ const initialsContainerClassNames = computed(() =>
 
 const initialsContainerStyle = computed(() => ({
   ...styles.initials,
-  fontSize: `${props.fontSize}px`,
+  fontSize: normalizeFontSize(props.fontSize, 14),
   ...(typeof props.initialsContainerProps?.style === 'object'
     ? props.initialsContainerProps.style
     : {}),

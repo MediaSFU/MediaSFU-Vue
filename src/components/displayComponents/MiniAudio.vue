@@ -129,7 +129,7 @@ import {
   type VNode,
   type VNodeChild,
 } from 'vue';
-import { getOverlayPosition } from '@legacy/methods/utils/getOverlayPosition';
+import { getOverlayPosition } from 'mediasfu-shared';
 
 /**
  * Options passed to renderWrapper function

@@ -84,6 +84,7 @@
       </span>
     </div>
     <div
+      v-if="!isBroadcast"
       class="icon-container"
       :style="styles.iconContainer"
     >
@@ -120,6 +121,7 @@ import type { Participant } from '../../../../SharedTypes';
  */
 export interface ParticipantListOthersItemProps {
   participant: Participant;
+  isBroadcast?: boolean;
   member: string;
   coHost: string;
 }

@@ -732,6 +732,10 @@ const overlayNode = computed(() => {
     );
 
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, class: 'icon' });
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Polls' : props.title;
+  })();
 
   const defaultHeader = h(
     'div',
@@ -748,7 +752,7 @@ const overlayNode = computed(() => {
           style: titleStyle,
           ...restTitleProps,
         },
-        [props.title]
+        [resolvedTitle]
       ),
       h(
         'button',

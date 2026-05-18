@@ -531,6 +531,11 @@ const handleCloseClick = (event: Event) => {
 
 // Build overlayNode
 const overlayNode = computed(() => {
+  const resolvedTitle = (() => {
+    const title = props.title as unknown;
+    return title === false || title == null ? 'Requests' : props.title;
+  })();
+
   const { class: overlayClassName, ...restOverlayProps } = props.overlayProps ?? {};
   const { class: contentClassName, ...restContentProps } = props.contentProps ?? {};
   const { class: headerClassName, style: headerStyleOverrides, ...restHeaderProps } = props.headerProps ?? {};
@@ -617,7 +622,10 @@ const overlayNode = computed(() => {
     ...(requestsWrapperStyleOverrides as CSSProperties ?? {}),
   };
 
-  const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes, class: 'icon' });
+  const closeIconComponent = props.closeIconComponent as unknown;
+  const defaultCloseIcon = closeIconComponent === false || closeIconComponent == null
+    ? h(FontAwesomeIcon, { icon: faTimes, class: 'icon' })
+    : props.closeIconComponent;
 
   const defaultHeader = h(
     'div',
@@ -635,7 +643,7 @@ const overlayNode = computed(() => {
           ...restTitleProps,
         },
         [
-          props.title,
+          resolvedTitle,
           h(
             'div',
             {

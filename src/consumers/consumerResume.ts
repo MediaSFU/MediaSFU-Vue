@@ -1,5 +1,6 @@
 import MiniAudioPlayer from '../methods/utils/MiniAudioPlayer/MiniAudioPlayer.vue';
 import MiniAudio from '../components/displayComponents/MiniAudio.vue';
+import TranslationAudioPlayer from '../methods/utils/TranslationAudioPlayer/TranslationAudioPlayer.vue';
 import type { RenderableComponent } from '../types/renderable-component';
 import type { PrepopulateUserMediaType, PrepopulateUserMediaParameters } from './prepopulateUserMedia';
 import type { Participant, Stream, EventType } from 'mediasfu-shared';
@@ -49,6 +50,8 @@ export interface ConsumerResumeParameters extends PrepopulateUserMediaParameters
   updateRemoteScreenStream: (streams: Stream[]) => void;
   updateOldAllStreams: (streams: (Stream | Participant)[]) => void;
   updateAudioOnlyStreams: (components: RenderableComponent[]) => void;
+  addTranslationStream?: (component: RenderableComponent) => void;
+  removeTranslationStream?: (producerId: string) => void;
   updateShareScreenStarted: (value: boolean) => void;
   updateGotAllVids: (value: boolean) => void;
   updateScreenId: (value: string) => void;
@@ -122,6 +125,8 @@ export const consumerResume: ConsumerResumeType = async ({
       updateRemoteScreenStream,
       updateOldAllStreams,
       updateAudioOnlyStreams,
+      addTranslationStream,
+      removeTranslationStream,
       updateShareScreenStarted,
       updateGotAllVids,
       updateScreenId,
@@ -186,10 +191,28 @@ export const consumerResume: ConsumerResumeType = async ({
     );
 
     if (track.kind === 'audio') {
+      const consumerAppData = (consumer.appData ?? {}) as {
+        type?: string;
+        isTranslation?: boolean;
+        translationMeta?: {
+          speakerName?: string;
+          speakerId?: string;
+          language?: string;
+        };
+      };
+      const isTranslationAudio =
+        parameters.activeTranslationProducerIds?.has(remoteProducerId) === true ||
+        consumerAppData.type === 'translation' ||
+        consumerAppData.isTranslation === true;
       const firstAudioParticipant = participantByAudio[0];
-      const participantName = firstAudioParticipant?.name ?? '';
+      let participantName = firstAudioParticipant?.name ?? '';
 
-      if (participantName === member) {
+      if (isTranslationAudio && !participantName) {
+        participantName =
+          consumerAppData.translationMeta?.speakerName || `Translation-${remoteProducerId.slice(0, 8)}`;
+      }
+
+      if (participantName === member && !isTranslationAudio) {
         return;
       }
 
@@ -216,6 +239,34 @@ export const consumerResume: ConsumerResumeType = async ({
 
       nStream = new MediaStream([track]);
       updateNStream(nStream);
+
+      if (isTranslationAudio) {
+        const translationAudioComponent: RenderableComponent = {
+          component: TranslationAudioPlayer,
+          props: {
+            stream: nStream,
+            producerId: remoteProducerId,
+          },
+          key: `translation-${remoteProducerId}`,
+        };
+
+        removeTranslationStream?.(remoteProducerId);
+        addTranslationStream?.(translationAudioComponent);
+
+        allAudioStreams = [
+          ...allAudioStreams,
+          { producerId: remoteProducerId, stream: nStream },
+        ];
+        updateAllAudioStreams(allAudioStreams);
+
+        audStreamNames = [
+          ...audStreamNames,
+          { producerId: remoteProducerId, name: participantName } as Stream,
+        ];
+        updateAudStreamNames(audStreamNames);
+
+        return;
+      }
 
       const miniAudioComponent: RenderableComponent = {
         component: MiniAudioPlayerComponentToUse,

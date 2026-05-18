@@ -35,7 +35,10 @@ import type { RequestsModalProps } from '../components/requestsComponents/Reques
 import type { WaitingRoomModalProps } from '../components/waitingComponents/WaitingModal.vue';
 import type { CoHostModalProps } from '../components/coHostComponents/CoHostModal.vue';
 import type { MediaSettingsModalProps } from '../components/mediaSettingsComponents/MediaSettingsModal.vue';
+import type { PermissionsModalProps } from '../components/permissionsComponents/PermissionsModal.vue';
 import type { ParticipantsModalProps } from '../components/participantsComponents/ParticipantsModal.vue';
+import type { PanelistsModalProps } from '../components/panelistsComponents/PanelistsModal.vue';
+import type { TranslationSettingsModalProps } from '../components/translationComponents/TranslationSettingsModal.vue';
 import type { MessagesModalProps } from '../components/messageComponents/MessagesModal.vue';
 import type { DisplaySettingsModalProps } from '../components/displaySettingsComponents/DisplaySettingsModal.vue';
 import type { ConfirmExitModalProps } from '../components/exitComponents/ConfirmExitModal.vue';
@@ -136,7 +139,10 @@ export interface MediasfuUICustomOverrides {
   waitingRoomModal?: CustomComponentOverride<WaitingRoomModalProps>;
   coHostModal?: CustomComponentOverride<CoHostModalProps>;
   mediaSettingsModal?: CustomComponentOverride<MediaSettingsModalProps>;
+  permissionsModal?: CustomComponentOverride<PermissionsModalProps>;
   participantsModal?: CustomComponentOverride<ParticipantsModalProps>;
+  panelistsModal?: CustomComponentOverride<PanelistsModalProps>;
+  translationSettingsModal?: CustomComponentOverride<TranslationSettingsModalProps>;
   messagesModal?: CustomComponentOverride<MessagesModalProps>;
   displaySettingsModal?: CustomComponentOverride<DisplaySettingsModalProps>;
   confirmExitModal?: CustomComponentOverride<ConfirmExitModalProps>;
