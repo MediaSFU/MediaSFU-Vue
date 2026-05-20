@@ -302,9 +302,76 @@ const loadingOverlayRef = ref<HTMLDivElement | null>(null)
 const applyBackgroundButtonRef = ref<HTMLButtonElement | null>(null)
 const saveBackgroundButtonRef = ref<HTMLButtonElement | null>(null)
 const mainCanvasRef = ref<HTMLCanvasElement | null>(null)
+const previewLoopVersion = ref(0)
+const previewAnimationFrameId = ref<number | null>(null)
+const previewCaptureTimeoutId = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const clonedStream = ref<MediaStream | null>(null)
 const clonedTrack = ref<MediaStreamTrack | null>(null)
+
+const previewAspectRatio = computed(() => {
+  const track =
+    processedStream.value?.getVideoTracks()[0] ??
+    segmentVideo.value?.getVideoTracks()[0] ??
+    props.parameters.localStreamVideo?.getVideoTracks()[0] ??
+    ((props.parameters.videoParams as { track?: MediaStreamTrack } | undefined)?.track ?? null)
+
+  const settings = track?.getSettings?.() ?? {}
+  const width = typeof settings.width === 'number' && settings.width > 0 ? settings.width : 16
+  const height = typeof settings.height === 'number' && settings.height > 0 ? settings.height : 9
+
+  return `${width} / ${height}`
+})
+
+const interactiveViewReady = () => (
+  !!captureVideoRef.value &&
+  !!videoPreviewRef.value &&
+  !!mainCanvasRef.value &&
+  !!applyBackgroundButtonRef.value &&
+  !!saveBackgroundButtonRef.value
+)
+
+const waitForInteractiveView = async () => {
+  for (let attempts = 0; attempts < 20; attempts += 1) {
+    await nextTick()
+    if (interactiveViewReady()) {
+      return true
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  return interactiveViewReady()
+}
+
+const stopPreviewProcessing = () => {
+  previewLoopVersion.value++
+  if (previewAnimationFrameId.value !== null) {
+    cancelAnimationFrame(previewAnimationFrameId.value)
+    previewAnimationFrameId.value = null
+  }
+  if (previewCaptureTimeoutId.value !== null) {
+    clearTimeout(previewCaptureTimeoutId.value)
+    previewCaptureTimeoutId.value = null
+  }
+}
+
+const resetProcessedStreamForAutoApply = () => {
+  if (!selectedImage.value || !processedStream.value) {
+    return
+  }
+
+  processedStream.value.getVideoTracks().forEach((track) => track.stop())
+  processedStream.value = null
+  props.parameters.updateProcessedStream?.(null)
+}
+
+const waitForProcessedStream = async () => {
+  for (let attempts = 0; !processedStream.value && attempts < 30; attempts += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const updatedParams = props.parameters.getUpdatedAllParams?.()
+    processedStream.value = updatedParams?.processedStream ?? processedStream.value
+  }
+}
 
 const showLoading = () => {
   loadingOverlayRef.value?.classList.remove('d-none')
@@ -364,7 +431,11 @@ const renderDefaultImages = () => {
     const img = document.createElement('img')
     img.src = thumb
     img.classList.add('img-thumbnail', 'm-1')
-    img.style.width = '80px'
+    img.style.width = '68px'
+    img.style.height = '52px'
+    img.style.objectFit = 'cover'
+    img.style.borderRadius = '10px'
+    img.style.border = '1px solid rgba(148, 163, 184, 0.28)'
     img.style.cursor = 'pointer'
     img.addEventListener('click', async () => {
       if (props.parameters.targetResolution === 'fhd' || props.parameters.targetResolution === 'qhd') {
@@ -378,13 +449,14 @@ const renderDefaultImages = () => {
 
   const noBackground = document.createElement('div')
   noBackground.classList.add('img-thumbnail', 'm-1', 'd-flex', 'align-items-center', 'justify-content-center')
-  noBackground.style.width = '76px'
-  noBackground.style.minHeight = '60px'
+  noBackground.style.width = '68px'
+  noBackground.style.minHeight = '52px'
   noBackground.style.cursor = 'pointer'
-  noBackground.style.backgroundColor = '#f8f9fa'
-  noBackground.style.border = '1px solid #dee2e6'
+  noBackground.style.backgroundColor = 'rgba(15, 23, 42, 0.88)'
+  noBackground.style.border = '1px solid rgba(148, 163, 184, 0.28)'
+  noBackground.style.borderRadius = '10px'
   noBackground.style.position = 'relative'
-  noBackground.innerHTML = '<span style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#000;">None</span>'
+  noBackground.innerHTML = '<span style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#e2e8f0; font-weight:600;">None</span>'
   noBackground.addEventListener('click', () => {
     selectedImage.value = ''
     props.parameters.updateSelectedImage?.('')
@@ -402,7 +474,11 @@ const renderDefaultImages = () => {
     const customImg = document.createElement('img')
     customImg.src = customImage.value
     customImg.classList.add('img-thumbnail', 'm-1')
-    customImg.style.width = '80px'
+    customImg.style.width = '68px'
+    customImg.style.height = '52px'
+    customImg.style.objectFit = 'cover'
+    customImg.style.borderRadius = '10px'
+    customImg.style.border = '1px solid rgba(148, 163, 184, 0.28)'
     customImg.style.cursor = 'pointer'
     customImg.addEventListener('click', () => {
       if (customImage.value) {
@@ -542,10 +618,21 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   virtualImage.crossOrigin = 'anonymous'
   virtualImage.src = selectedImage.value || ''
 
-  const mainCanvasFromProps = props.parameters.mainCanvas ?? null
-  let mainCanvas: HTMLCanvasElement | null = mainCanvasFromProps
-  if (!mainCanvas) {
-    mainCanvas = mainCanvasRef.value
+  if (doSegmentation && selectedImage.value) {
+    await new Promise<void>((resolve) => {
+      if (virtualImage.complete && virtualImage.naturalWidth > 0) {
+        resolve()
+        return
+      }
+
+      virtualImage.onload = () => resolve()
+      virtualImage.onerror = () => resolve()
+    })
+  }
+
+  const mainCanvas = mainCanvasRef.value
+  if (mainCanvas) {
+    props.parameters.updateMainCanvas?.(mainCanvas)
   }
 
   if (!mainCanvas || !refVideo || !previewVideo) return
@@ -554,6 +641,72 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   mediaCanvas.width = refVideo.videoWidth
   mediaCanvas.height = refVideo.videoHeight
   let ctx = mediaCanvas.getContext('2d')
+  let repeatMode: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' = 'no-repeat'
+  let firstFrameResolved = !doSegmentation
+  let resolveFirstFrame: (() => void) | null = null
+  const firstFrameRendered = new Promise<void>((resolve) => {
+    resolveFirstFrame = resolve
+  })
+
+  const markFirstFrameRendered = () => {
+    if (firstFrameResolved) return
+    firstFrameResolved = true
+    resolveFirstFrame?.()
+    resolveFirstFrame = null
+  }
+
+  const onResults = (results: SegmentationResults) => {
+    try {
+      if (
+        !pauseSegmentation.value &&
+        mediaCanvas &&
+        mediaCanvas.width > 0 &&
+        mediaCanvas.height > 0 &&
+        virtualImage &&
+        virtualImage.width > 0 &&
+        virtualImage.height > 0
+      ) {
+        ctx?.save()
+        ctx?.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height)
+        ctx?.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height)
+
+        if (ctx) {
+          ctx.globalCompositeOperation = 'source-out'
+          const pattern = ctx.createPattern(virtualImage, repeatMode)
+          if (pattern) {
+            ctx.fillStyle = pattern
+          } else {
+            ctx.fillStyle = ''
+          }
+          ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height)
+
+          ctx.globalCompositeOperation = 'destination-atop'
+          ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height)
+
+          ctx.restore()
+          markFirstFrameRendered()
+        }
+      }
+    } catch (error) {
+      console.log('Error applying background:', error)
+    }
+  }
+
+  if (doSegmentation) {
+    if (!selfieSegmentation.value) {
+      try {
+        await preloadModel()
+      } catch {
+        console.log('Error preloading model:')
+      }
+    }
+
+    try {
+      selfieSegmentation.value?.onResults(onResults)
+    } catch {
+      // Handle error silently
+    }
+  }
 
   backgroundHasChanged.value = true
   props.parameters.updateBackgroundHasChanged?.(true)
@@ -570,45 +723,63 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   }
 
   const segmentImage = async (videoElement: HTMLVideoElement) => {
-    try {
-      const processFrame = () => {
-        if (
-          !selfieSegmentation.value ||
-          pauseSegmentation.value ||
-          !videoElement ||
-          videoElement.videoWidth === 0 ||
-          videoElement.videoHeight === 0
-        ) {
-          return
-        }
+    stopPreviewProcessing()
+    const loopVersion = previewLoopVersion.value
+    let startedProcessing = false
 
-        selfieSegmentation.value.send({ image: videoElement })
-        requestAnimationFrame(processFrame)
+    const processFrame = () => {
+      if (
+        loopVersion !== previewLoopVersion.value ||
+        !selfieSegmentation.value ||
+        pauseSegmentation.value ||
+        !videoElement ||
+        videoElement.videoWidth === 0 ||
+        videoElement.videoHeight === 0
+      ) {
+        return
       }
 
-      videoElement.onloadeddata = () => {
-        processFrame()
+      try {
+        void selfieSegmentation.value.send({ image: videoElement }).catch(() => undefined)
+      } catch {
+        // Handle send error silently
       }
-
-      setTimeout(async () => {
-        processedStream.value = mediaCanvas.captureStream(props.parameters.frameRate || 5)
-        previewVideo.srcObject = processedStream.value
-        props.parameters.updateProcessedStream?.(processedStream.value)
-        previewVideo.classList.remove('d-none')
-        keepBackground.value = true
-        props.parameters.updateKeepBackground?.(keepBackground.value)
-
-        if (previewVideo.paused) {
-          try {
-            await previewVideo.play()
-          } catch {
-            // Handle play error silently
-          }
-        }
-      }, 100)
-    } catch {
-      // Handle segmentation error silently
+      previewAnimationFrameId.value = requestAnimationFrame(processFrame)
     }
+
+    const startProcessing = () => {
+      if (startedProcessing) return
+      startedProcessing = true
+      processFrame()
+    }
+
+    videoElement.onloadeddata = startProcessing
+    if (videoElement.readyState >= 2 && videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+      startProcessing()
+    }
+
+    previewCaptureTimeoutId.value = setTimeout(async () => {
+      if (loopVersion !== previewLoopVersion.value) return
+      await Promise.race([
+        firstFrameRendered,
+        new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+      ])
+      if (loopVersion !== previewLoopVersion.value) return
+      processedStream.value = mediaCanvas.captureStream(props.parameters.frameRate || 5)
+      previewVideo.srcObject = processedStream.value
+      props.parameters.updateProcessedStream?.(processedStream.value)
+      previewVideo.classList.remove('d-none')
+      keepBackground.value = true
+      props.parameters.updateKeepBackground?.(keepBackground.value)
+
+      if (previewVideo.paused) {
+        try {
+          await previewVideo.play()
+        } catch {
+          // Handle play error silently
+        }
+      }
+    }, 100)
   }
 
   if (props.parameters.videoAlreadyOn) {
@@ -712,7 +883,6 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     }
   }
 
-  let repeatMode: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' = 'no-repeat'
   try {
     if (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height) {
       repeatMode = 'repeat'
@@ -721,54 +891,8 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     // Handle error silently
   }
 
-  const onResults = (results: SegmentationResults) => {
-    try {
-      if (
-        !pauseSegmentation.value &&
-        mediaCanvas &&
-        mediaCanvas.width > 0 &&
-        mediaCanvas.height > 0 &&
-        virtualImage &&
-        virtualImage.width > 0 &&
-        virtualImage.height > 0
-      ) {
-        ctx?.save()
-        ctx?.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height)
-        ctx?.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height)
-
-        if (ctx) {
-          ctx.globalCompositeOperation = 'source-out'
-          const pattern = ctx.createPattern(virtualImage, repeatMode)
-          if (pattern) {
-            ctx.fillStyle = pattern
-          } else {
-            ctx.fillStyle = ''
-          }
-          ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height)
-
-          ctx.globalCompositeOperation = 'destination-atop'
-          ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height)
-
-          ctx.restore()
-        }
-      }
-    } catch (error) {
-      console.log('Error applying background:', error)
-    }
-  }
-
-  if (!selfieSegmentation.value) {
-    try {
-      await preloadModel()
-    } catch {
-      console.log('Error preloading model:')
-    }
-  }
-
-  try {
-    selfieSegmentation.value?.onResults(onResults)
-  } catch {
-    // Handle error silently
+  if (!doSegmentation) {
+    markFirstFrameRendered()
   }
 }
 
@@ -790,6 +914,9 @@ const applyBackground = async () => {
   pauseSegmentation.value = false
   props.parameters.updatePauseSegmentation?.(false)
   await selfieSegmentationPreview(doSegmentation)
+  if (doSegmentation) {
+    await waitForProcessedStream()
+  }
   hideLoading()
 
   applyBackgroundButtonRef.value?.classList.add('d-none')
@@ -929,12 +1056,24 @@ const saveBackground = async () => {
 
 const handleAutoClickBackground = async () => {
   if (!autoClickBackground.value || !props.isVisible) return
+
+  const refsReady = await waitForInteractiveView()
+  if (!refsReady) {
+    console.error('Background modal refs not ready after waiting')
+    autoClickBackground.value = false
+    props.parameters.updateAutoClickBackground?.(false)
+    props.onClose()
+    return
+  }
+
   try {
+    resetProcessedStreamForAutoApply()
     await applyBackground()
     await saveBackground()
   } finally {
     autoClickBackground.value = false
     props.parameters.updateAutoClickBackground?.(false)
+    props.onClose()
   }
 }
 
@@ -1058,7 +1197,7 @@ const joinClassNames = (classes: (string | undefined)[]): string | undefined => 
 }
 
 // Computed properties for styles
-const defaultOverlayWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.8, 500) : 360
+const defaultOverlayWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.92, 560) : 420
 
 const overlayStyle = computed((): CSSProperties => ({
   position: 'fixed' as const,
@@ -1066,7 +1205,7 @@ const overlayStyle = computed((): CSSProperties => ({
   left: 0,
   width: '100%',
   height: '100%',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  backgroundColor: 'transparent',
   display: props.isVisible ? 'block' : 'none',
   zIndex: 999,
   ...(props.overlayProps?.style as CSSProperties || {})
@@ -1079,11 +1218,11 @@ const overlayClassName = computed(() =>
 const contentStyle = computed((): CSSProperties => ({
   position: 'fixed' as const,
   backgroundColor: props.backgroundColor,
-  borderRadius: '10px',
-  padding: '16px',
+  borderRadius: '18px',
+  padding: '18px',
   width: `${defaultOverlayWidth}px`,
-  maxWidth: `${defaultOverlayWidth}px`,
-  maxHeight: '75%',
+  maxWidth: `min(${defaultOverlayWidth}px, calc(100vw - 24px))`,
+  maxHeight: 'calc(100vh - 24px)',
   overflow: 'hidden' as const,
   top: props.position.includes('top') ? '10px' : 'auto',
   bottom: props.position.includes('bottom') ? '10px' : 'auto',
@@ -1092,7 +1231,9 @@ const contentStyle = computed((): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column' as const,
   gap: '12px',
-  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+  border: '1px solid rgba(148, 163, 184, 0.24)',
+  boxShadow: '0 24px 48px rgba(15, 23, 42, 0.34)',
+  color: 'var(--ms-modern-text-primary, #e2e8f0)',
   ...(props.contentProps?.style as CSSProperties || {})
 }))
 
@@ -1113,9 +1254,9 @@ const overlayNode = computed(() => {
     class: joinClassNames(['modal-title', props.titleProps?.class as string]),
     style: {
       margin: 0,
-      fontSize: '1.25rem',
-      fontWeight: 'bold',
-      color: 'black',
+      fontSize: '1.05rem',
+      fontWeight: 700,
+      color: 'var(--ms-modern-text-primary, #e2e8f0)',
       ...(props.titleProps?.style as CSSProperties || {})
     },
     ...(props.titleProps ? Object.fromEntries(
@@ -1140,14 +1281,17 @@ const overlayNode = computed(() => {
     h('button', {
       class: joinClassNames(['btn-close-background', props.closeButtonProps?.class as string]),
       style: {
-        background: 'none',
-        border: 'none',
+        background: 'rgba(15, 23, 42, 0.88)',
+        border: '1px solid rgba(148, 163, 184, 0.22)',
+        borderRadius: '9999px',
+        width: '34px',
+        height: '34px',
         padding: '4px',
         cursor: 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'black',
+        color: 'var(--ms-modern-text-primary, #e2e8f0)',
         ...(props.closeButtonProps?.style as CSSProperties || {})
       },
       onClick: (event: MouseEvent) => {
@@ -1171,7 +1315,8 @@ const overlayNode = computed(() => {
   const dividerNode = h('hr', {
     style: {
       height: '1px',
-      backgroundColor: 'black',
+      backgroundColor: 'rgba(148, 163, 184, 0.24)',
+      border: 'none',
       marginTop: '5px',
       marginBottom: '5px',
       ...(props.headerDividerProps?.style as CSSProperties || {})
@@ -1185,15 +1330,34 @@ const overlayNode = computed(() => {
   const defaultImagesNode = h('div', {
     id: 'defaultImages',
     ref: defaultImagesContainerRef,
-    ...(props.defaultImagesContainerProps || {})
+    style: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '6px',
+      padding: '10px',
+      borderRadius: '14px',
+      border: '1px solid rgba(148, 163, 184, 0.2)',
+      background: 'rgba(15, 23, 42, 0.3)',
+      overflow: 'hidden',
+      ...(props.defaultImagesContainerProps?.style as CSSProperties || {})
+    },
+    ...(props.defaultImagesContainerProps ? Object.fromEntries(
+      Object.entries(props.defaultImagesContainerProps).filter(([key]) => !['style'].includes(key))
+    ) : {})
   })
   
   // Upload section
   const uploadSectionNode = h('div', {
     class: joinClassNames(['form-group', props.uploadWrapperProps?.class as string]),
     style: {
-      maxWidth: '70%',
-      overflowX: 'auto',
+      maxWidth: '100%',
+      overflow: 'hidden',
+      display: 'grid',
+      gap: '8px',
+      padding: '12px',
+      borderRadius: '14px',
+      border: '1px solid rgba(148, 163, 184, 0.2)',
+      background: 'rgba(15, 23, 42, 0.3)',
       ...(props.uploadWrapperProps?.style as CSSProperties || {})
     },
     ...(props.uploadWrapperProps ? Object.fromEntries(
@@ -1201,8 +1365,15 @@ const overlayNode = computed(() => {
     ) : {})
   }, [
     h('label', {
+      style: {
+        color: 'var(--ms-modern-text-primary, #e2e8f0)',
+        fontWeight: 600,
+        ...(props.uploadLabelProps?.style as CSSProperties || {})
+      },
+      ...(props.uploadLabelProps ? Object.fromEntries(
+        Object.entries(props.uploadLabelProps).filter(([key]) => !['style'].includes(key))
+      ) : {}),
       for: 'uploadImage',
-      ...(props.uploadLabelProps || {})
     }, typeof props.uploadLabel === 'string' || typeof props.uploadLabel === 'number' 
       ? [props.uploadLabel] 
       : (props.uploadLabel || [])
@@ -1212,8 +1383,21 @@ const overlayNode = computed(() => {
       ref: uploadImageInputRef,
       type: 'file',
       class: 'form-control',
+      style: {
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        padding: '10px 12px',
+        borderRadius: '12px',
+        border: '1px solid rgba(148, 163, 184, 0.28)',
+        background: 'rgba(15, 23, 42, 0.78)',
+        color: 'var(--ms-modern-text-primary, #e2e8f0)',
+        ...(props.uploadInputProps?.style as CSSProperties || {})
+      },
       onChange: handleImageUpload,
-      ...(props.uploadInputProps || {})
+      ...(props.uploadInputProps ? Object.fromEntries(
+        Object.entries(props.uploadInputProps).filter(([key]) => !['style'].includes(key))
+      ) : {})
     })
   ])
   
@@ -1230,8 +1414,11 @@ const overlayNode = computed(() => {
     ref: backgroundCanvasRef,
     class: 'd-none',
     style: {
+      position: 'absolute',
+      inset: 0,
       width: '100%',
-      maxHeight: '500px',
+      height: '100%',
+      display: 'block',
       ...(props.backgroundCanvasProps?.style as CSSProperties || {})
     },
     ...(props.backgroundCanvasProps ? Object.fromEntries(
@@ -1258,8 +1445,12 @@ const overlayNode = computed(() => {
     autoplay: true,
     playsinline: true,
     style: {
+      position: 'absolute',
+      inset: 0,
       width: '100%',
-      maxHeight: '500px',
+      height: '100%',
+      objectFit: 'contain',
+      backgroundColor: 'rgba(15, 23, 42, 0.86)',
       ...(props.previewVideoProps?.style as CSSProperties || {})
     },
     ...(props.previewVideoProps ? Object.fromEntries(
@@ -1290,10 +1481,10 @@ const overlayNode = computed(() => {
       width: '100%',
       height: '100%',
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'none',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
+      borderRadius: 'inherit',
       ...(props.loadingOverlayProps?.style as CSSProperties || {})
     },
     ...(props.loadingOverlayProps ? Object.fromEntries(
@@ -1306,6 +1497,8 @@ const overlayNode = computed(() => {
     style: {
       display: 'flex',
       gap: '8px',
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
       ...(props.buttonsWrapperProps?.style as CSSProperties || {})
     },
     ...(props.buttonsWrapperProps ? Object.fromEntries(
@@ -1317,7 +1510,16 @@ const overlayNode = computed(() => {
       ref: applyBackgroundButtonRef,
       class: joinClassNames(['btn btn-primary', props.applyButtonProps?.class as string]),
       type: 'button',
-      style: { ...(props.applyButtonProps?.style as CSSProperties || {}) },
+      style: {
+        minHeight: '38px',
+        borderRadius: '9999px',
+        border: '1px solid rgba(148, 163, 184, 0.24)',
+        paddingInline: '16px',
+        background: 'rgba(15, 23, 42, 0.82)',
+        color: 'var(--ms-modern-text-primary, #e2e8f0)',
+        fontWeight: 700,
+        ...(props.applyButtonProps?.style as CSSProperties || {})
+      },
       onClick: (event: MouseEvent) => {
         if (props.applyButtonProps?.onClick) {
           (props.applyButtonProps.onClick as (event: MouseEvent) => void)(event)
@@ -1338,7 +1540,16 @@ const overlayNode = computed(() => {
       ref: saveBackgroundButtonRef,
       class: joinClassNames(['btn btn-success d-none', props.saveButtonProps?.class as string]),
       type: 'button',
-      style: { ...(props.saveButtonProps?.style as CSSProperties || {}) },
+      style: {
+        minHeight: '38px',
+        borderRadius: '9999px',
+        border: 'none',
+        paddingInline: '16px',
+        background: 'linear-gradient(135deg, #2563eb 0%, #10b981 100%)',
+        color: '#fff',
+        fontWeight: 700,
+        ...(props.saveButtonProps?.style as CSSProperties || {})
+      },
       onClick: (event: MouseEvent) => {
         if (props.saveButtonProps?.onClick) {
           (props.saveButtonProps.onClick as (event: MouseEvent) => void)(event)
@@ -1363,12 +1574,33 @@ const overlayNode = computed(() => {
         saveButtonRef: saveBackgroundButtonRef
       })
     : defaultButtonsNode
+
+  const previewStageNode = h('div', {
+    style: {
+      position: 'relative',
+      width: '100%',
+      aspectRatio: previewAspectRatio.value,
+      minHeight: '180px',
+      maxHeight: 'min(44vh, 360px)',
+      borderRadius: '16px',
+      overflow: 'hidden',
+      border: '1px solid rgba(148, 163, 184, 0.22)',
+      background: 'rgba(15, 23, 42, 0.72)'
+    }
+  }, [
+    backgroundCanvasNode,
+    previewVideoNode,
+    loadingOverlayNode
+  ])
   
   // Body content
   const defaultBodyNode = h('div', {
     style: {
-      maxWidth: '95%',
-      overflowX: 'auto',
+      width: '100%',
+      maxWidth: '100%',
+      display: 'grid',
+      gap: '12px',
+      overflowY: 'auto',
       ...(props.bodyProps?.style as CSSProperties || {})
     },
     ...(props.bodyProps ? Object.fromEntries(
@@ -1378,11 +1610,8 @@ const overlayNode = computed(() => {
     defaultImagesNode,
     uploadSectionNode,
     mainCanvasNode,
-    backgroundCanvasNode,
     captureVideoNode,
-    previewVideoNode,
-    loadingOverlayNode,
-    h('br'),
+    previewStageNode,
     buttonsNode
   ])
   

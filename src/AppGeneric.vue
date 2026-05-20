@@ -27,6 +27,7 @@ import PreJoinPage from './components/miscComponents/PreJoinPage.vue'
 // Import custom "create" and "join" room functions
 import { createRoomOnMediaSFU } from './utils/mediasfuRooms'
 import { joinRoomOnMediaSFU } from './utils/mediasfuRooms'
+import { getDemoCloudConfig } from './utils/demoCloudConfig'
 import type { CreateMediaSFURoomOptions, JoinMediaSFURoomOptions } from 'mediasfu-shared'
 
 /**
@@ -74,12 +75,7 @@ const connectMediaSFU = localLink.trim() !== '';
 // Scenario C: Using MediaSFU Cloud without your own server.
 // - For local development, use Vite env variables from .env.example.
 // - In production, keep real credentials server-side and use custom room functions.
-const credentials = {
-  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
-  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
-}
-const localLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK ?? ''
-const connectMediaSFU = localLink.trim() !== '' || (credentials.apiUserName.trim() !== '' && credentials.apiKey.trim() !== '')
+const { credentials, localLink, connectMediaSFU } = getDemoCloudConfig()
 
 // =========================================================
 //                    UI RENDERING OPTIONS

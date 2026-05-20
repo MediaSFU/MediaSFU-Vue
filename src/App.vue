@@ -199,6 +199,7 @@ import {
   createRoomOnMediaSFU,
   joinRoomOnMediaSFU,
 } from './utils/mediasfuRooms'
+import { getDemoCloudConfig } from './utils/demoCloudConfig'
 
 /**
  * App Component
@@ -245,12 +246,7 @@ const connectMediaSFU = localLink.trim() !== '';
 // Scenario C: Using MediaSFU Cloud without your own server.
 // - For local development, use Vite env variables from .env.example.
 // - In production, keep real credentials server-side and use custom room functions.
-const credentials = {
-  apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME ?? '',
-  apiKey: import.meta.env.VITE_MEDIASFU_API_KEY ?? '',
-}
-const localLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK ?? ''
-const connectMediaSFU = localLink.trim() !== '' || (credentials.apiUserName.trim() !== '' && credentials.apiKey.trim() !== '')
+const { credentials, localLink, connectMediaSFU } = getDemoCloudConfig()
 
 // =========================================================
 //                    UI RENDERING OPTIONS

@@ -722,7 +722,7 @@
 
       <component
         :is="BackgroundModalComponent"
-        background-color="rgba(217, 227, 234, 0.99)"
+        :background-color="roomSurfaceBackgroundColor"
         :is-visible="isBackgroundModalVisible"
         :on-close="() => updateIsBackgroundModalVisible(false)"
         :parameters="allParameters"
@@ -776,7 +776,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, h, defineComponent, markRaw, type Component, type ComputedRef, type CSSProperties, type HTMLAttributes, type VNodeChild } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, h, defineComponent, markRaw, unref, type Component, type ComputedRef, type CSSProperties, type HTMLAttributes, type VNodeChild } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
   faMicrophoneSlash,
@@ -918,7 +918,7 @@ import { clickAudio } from 'mediasfu-shared';
 import { clickScreenShare } from 'mediasfu-shared';
 
 // Consumer functions - use shared where available
-import { streamSuccessVideo } from 'mediasfu-shared';
+import { streamSuccessVideo } from '../../consumers/streamSuccessVideo';
 import { streamSuccessAudio } from 'mediasfu-shared';
 import { streamSuccessScreen } from 'mediasfu-shared';
 import { streamSuccessAudioSwitch } from 'mediasfu-shared';
@@ -3650,7 +3650,33 @@ const updateIsPollModalVisible = (value: boolean) => {
 };
 
 const updateIsBackgroundModalVisible = (value: boolean) => {
+  if (value && autoClickBackground.value) {
+    if (activeSidebarContent.value === 'background') {
+      closeSidebar();
+    }
+
+    isBackgroundModalVisible.value = true;
+    scheduleResize();
+    return;
+  }
+
+  if (value && shouldRouteToHostedSurface.value) {
+    isBackgroundModalVisible.value = false;
+
+    if (activeSidebarContent.value !== 'background') {
+      sidebarNavigationStack.value = [];
+      activeSidebarContent.value = 'background';
+      scheduleResize();
+    }
+
+    return;
+  }
+
   isBackgroundModalVisible.value = value;
+
+  if (!value && activeSidebarContent.value === 'background') {
+    closeSidebar();
+  }
 };
 
 const updateIsBreakoutRoomsModalVisible = (value: boolean) => {
@@ -3705,6 +3731,7 @@ const clearSidebarModalFlags = () => {
   isSettingsModalVisible.value = false;
   isRecordingModalVisible.value = false;
   isPollModalVisible.value = false;
+  isBackgroundModalVisible.value = false;
   isBreakoutRoomsModalVisible.value = false;
   isShareEventModalVisible.value = false;
   isConfigureWhiteboardModalVisible.value = false;
@@ -3723,10 +3750,6 @@ const closeSidebar = () => {
 function runSidebarContentPreflight(content: SidebarContentType): boolean {
   if (content === 'recording') {
     return prepareRecordingSidebar();
-  }
-
-  if (content === 'background') {
-    updateIsBackgroundModalVisible(true);
   }
 
   if (content === 'mediaSettings') {
@@ -6115,8 +6138,11 @@ const embeddedMenuModalProps = computed(() => ({
   renderMode: 'sidebar',
 }));
 
-const renderSidebarComponent = (component: unknown, props: Record<string, unknown>): VNodeChild =>
-  h(component as Component, props);
+const renderSidebarComponent = (component: unknown, props: Record<string, unknown>): VNodeChild => {
+  const resolvedComponent = unref(component as Component | ComputedRef<Component> | null | undefined);
+
+  return resolvedComponent ? h(resolvedComponent as Component, props) : null;
+};
 
 const sidebarContentNode = computed<VNodeChild>(() => {
   const sharedProps = sidebarNavigationStack.value.length > 0
@@ -6250,6 +6276,7 @@ const sidebarContentNode = computed<VNodeChild>(() => {
         renderMode: 'sidebar',
         isMediaSettingsModalVisible: true,
         onMediaSettingsClose: closeSidebar,
+        onOpenBackgroundSidebar: () => updateActiveSidebarContent('background', true),
         parameters: allParameters.value,
       } as Record<string, unknown>);
     case 'displaySettings':
@@ -6306,6 +6333,14 @@ const sidebarContentNode = computed<VNodeChild>(() => {
         handleCreatePoll,
         handleEndPoll,
         handleVotePoll,
+      } as Record<string, unknown>);
+    case 'background':
+      return renderSidebarComponent(BackgroundModalComponent, {
+        ...sharedProps,
+        renderMode: 'sidebar',
+        isVisible: true,
+        onClose: closeSidebar,
+        parameters: allParameters.value,
       } as Record<string, unknown>);
     case 'breakoutRooms':
       return renderSidebarComponent(ModernBreakoutRoomsModal, {

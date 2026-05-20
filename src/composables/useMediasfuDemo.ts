@@ -2,6 +2,7 @@ import { computed, reactive, ref } from 'vue'
 import type { Ref } from 'vue'
 import type { EventType, CreateMediaSFURoomOptions, JoinMediaSFURoomOptions, StyleDictionary } from 'mediasfu-shared'
 import type { Credentials } from '../types/mediasfu'
+import { getDemoCloudConfig } from '../utils/demoCloudConfig'
 
 export interface DemoState {
   credentials: Credentials
@@ -25,15 +26,14 @@ const DEFAULT_CONTAINER_STYLE: StyleDictionary = {
 }
 
 export const useMediasfuDemo = (defaultEventType: EventType = 'webinar'): DemoState => {
+  const demoCloudConfig = getDemoCloudConfig()
   const credentials = reactive<Credentials>({
-    apiUserName: import.meta.env.VITE_MEDIASFU_API_USERNAME?.trim() || '',
-    apiKey: import.meta.env.VITE_MEDIASFU_API_KEY?.trim() || '',
+    apiUserName: demoCloudConfig.credentials.apiUserName,
+    apiKey: demoCloudConfig.credentials.apiKey,
   })
 
-  const localLink = ref(import.meta.env.VITE_MEDIASFU_LOCAL_LINK?.trim() || '')
-  const connectMediaSFU = ref(
-    localLink.value !== '' || (credentials.apiUserName !== '' && credentials.apiKey !== ''),
-  )
+  const localLink = ref(demoCloudConfig.localLink)
+  const connectMediaSFU = ref(demoCloudConfig.connectMediaSFU)
   const returnUI = ref(true)
   const useCustomComponent = ref(false)
   const useCustomCards = ref(false)

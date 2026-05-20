@@ -155,6 +155,7 @@ export interface BackgroundModalProps {
   isVisible: boolean
   onClose: () => void
   parameters: BackgroundModalParameters
+  renderMode?: 'modal' | 'sidebar' | 'inline'
   position?: BackgroundModalPosition
   backgroundColor?: string
   title?: VNodeChild

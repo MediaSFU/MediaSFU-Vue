@@ -1,3 +1,9 @@
+# MediaSFU Vue SDK · [mediasfu-vue on npm](https://www.npmjs.com/package/mediasfu-vue)
+
+**mediasfu-vue** is the Vue 3 / Composition API WebRTC SDK for video conferencing, webinars, live streaming, broadcast, screen sharing, whiteboard, chat, recording, live subtitles, translation, and AI agent rooms — powered by MediaSFU Cloud or your self-hosted MediaSFU Open server. Install with `npm install mediasfu-vue`.
+
+---
+
 <p align="center">
   <img src="https://www.mediasfu.com/logo192.png" width="100" alt="MediaSFU Logo">
 </p>
@@ -5221,7 +5227,22 @@ If you encounter any issues or have suggestions for improvement, please feel fre
 We appreciate your interest in contributing to the project!
 
 If you need further assistance or have any questions, feel free to ask!
-```
+
+---
+
+## Related SDKs
+
+| Package | Framework | npm |
+|---------|-----------|-----|
+| [mediasfu-reactjs](https://github.com/MediaSFU/MediaSFU-ReactJS) | React 18/19 | [`npm install mediasfu-reactjs`](https://www.npmjs.com/package/mediasfu-reactjs) |
+| **[mediasfu-vue](https://github.com/MediaSFU/MediaSFU-Vue)** | **Vue 3** | **this package** |
+| [mediasfu-angular](https://github.com/MediaSFU/MediaSFU-Angular) | Angular 17+ | [`npm install mediasfu-angular`](https://www.npmjs.com/package/mediasfu-angular) |
+| [mediasfu-shared](https://github.com/MediaSFU/MediaSFU-Shared) | Framework-agnostic | [`npm install mediasfu-shared`](https://www.npmjs.com/package/mediasfu-shared) |
+
+## License
+
+MIT © [MediaSFU](https://www.mediasfu.com)
+
 
 
 

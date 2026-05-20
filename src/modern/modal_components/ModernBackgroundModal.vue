@@ -1,7 +1,14 @@
 <template>
-  <Teleport to="body">
-    <RenderVNode :node="overlayNode" />
+  <Teleport
+    v-if="shouldTeleport"
+    to="body"
+  >
+    <RenderVNode :node="renderOverlayNode" />
   </Teleport>
+  <RenderVNode
+    v-else
+    :node="renderOverlayNode"
+  />
 </template>
 
 <script setup lang="ts">
@@ -33,6 +40,7 @@ import type { BackgroundModalProps, BackgroundModalPosition } from '../../types/
 import { mergeAttrObjects, mergeStyleObjects } from '../display_components/styleUtils';
 
 const props = withDefaults(defineProps<BackgroundModalProps>(), {
+  renderMode: 'modal',
   position: 'topLeft',
   backgroundColor: undefined,
   title: () => 'Background Settings',
@@ -80,7 +88,7 @@ const RenderVNode = defineComponent({
     if (isVNode(this.node)) return this.node;
     if (typeof this.node === 'function') {
       const result = (this.node as () => VNodeChild)();
-      return isVNode(result) ? result : String(result);
+      return result as VNodeChild;
     }
     return this.node as VNodeChild;
   },
@@ -101,6 +109,7 @@ const virtualStream = ref<MediaStream | null>(null);
 const prevKeepBackground = ref(false);
 const appliedBackground = ref(false);
 const autoClickBackground = ref(false);
+const videoAlreadyOnState = ref(false);
 
 const backgroundCanvasRef = ref<HTMLCanvasElement | null>(null);
 const videoPreviewRef = ref<HTMLVideoElement | null>(null);
@@ -108,9 +117,15 @@ const captureVideoRef = ref<HTMLVideoElement | null>(null);
 const applyBackgroundButtonRef = ref<HTMLButtonElement | null>(null);
 const saveBackgroundButtonRef = ref<HTMLButtonElement | null>(null);
 const mainCanvasRef = ref<HTMLCanvasElement | null>(null);
+const previewLoopVersion = ref(0);
+const previewAnimationFrameId = ref<number | null>(null);
+const previewCaptureTimeoutId = ref<ReturnType<typeof setTimeout> | null>(null);
+const uploadFileName = ref('No file selected');
+const isAutoApplyBusy = ref(false);
 
 const clonedStream = ref<MediaStream | null>(null);
 const clonedTrack = ref<MediaStreamTrack | null>(null);
+let isAutoClickBackgroundRunning = false;
 
 const isLoading = ref(false);
 const showPreviewVideo = ref(false);
@@ -147,6 +162,7 @@ watch(
     prevKeepBackground.value = parameters.prevKeepBackground ?? false;
     appliedBackground.value = parameters.appliedBackground ?? false;
     autoClickBackground.value = parameters.autoClickBackground ?? false;
+    videoAlreadyOnState.value = parameters.videoAlreadyOn ?? false;
   },
   { deep: true, immediate: true },
 );
@@ -198,6 +214,59 @@ const isExistingProcessedState = () =>
       appliedBackground.value,
   );
 
+const hasSelectedBackground = computed(() => Boolean(selectedImage.value || customImage.value));
+
+const getStreamVideoTrack = (stream: MediaStream | null | undefined): MediaStreamTrack | null =>
+  stream?.getVideoTracks?.()[0] ?? null;
+
+const getLiveVideoTrack = (stream: MediaStream | null | undefined): MediaStreamTrack | null => {
+  const track = getStreamVideoTrack(stream);
+  return track?.readyState === 'live' ? track : null;
+};
+
+const stageStatusCopy = computed(() => {
+  if (!videoAlreadyOnState.value) {
+    return hasSelectedBackground.value ? 'Saved for camera on' : 'Camera off';
+  }
+
+  if (keepBackground.value && appliedBackground.value) {
+    return 'Preview ready';
+  }
+
+  if (hasSelectedBackground.value) {
+    return 'Selection loaded';
+  }
+
+  return 'Choose a background';
+});
+
+const guidanceCopy = computed(() => {
+  if (!videoAlreadyOnState.value && hasSelectedBackground.value) {
+    return 'Your camera is off right now. This background will apply automatically when you turn video on.';
+  }
+
+  if (!videoAlreadyOnState.value) {
+    return 'Your camera is currently off. Turn video on to preview your background live.';
+  }
+
+  if (keepBackground.value && appliedBackground.value) {
+    return 'Preview looks good. Save to keep this background in the active stream.';
+  }
+
+  if (hasSelectedBackground.value) {
+    return 'Background selected. Preview it here before saving it to the room.';
+  }
+
+  return 'Choose a built-in backdrop or upload a custom image to start.';
+});
+
+const guidanceTone = computed<'info' | 'success'>(() =>
+  (!videoAlreadyOnState.value && hasSelectedBackground.value) ||
+  (keepBackground.value && appliedBackground.value)
+    ? 'success'
+    : 'info',
+);
+
 const resetActionButtons = () => {
   isApplyButtonVisible.value = true;
   isApplyButtonDisabled.value = false;
@@ -221,9 +290,10 @@ const clearCanvas = () => {
 
   canvas.width = 640;
   canvas.height = 360;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = '30px Arial';
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '600 26px Arial';
+  ctx.fillStyle = '#cbd5e1';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('No Background', canvas.width / 2, canvas.height / 2);
@@ -295,7 +365,12 @@ const handleImageUpload = (event: Event) => {
   try {
     const input = event.target as HTMLInputElement | null;
     const file = input?.files?.[0];
-    if (!file) return;
+    if (!file) {
+      uploadFileName.value = 'No file selected';
+      return;
+    }
+
+    uploadFileName.value = file.name;
 
     if (file.size > 2048 * 2048) {
       props.parameters.showAlert?.({
@@ -371,7 +446,10 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   const parameters = getCurrentParameters();
   const refVideo = captureVideoRef.value;
   const previewVideo = videoPreviewRef.value;
-  const mainCanvas = parameters.mainCanvas ?? mainCanvasRef.value;
+  const mainCanvas = mainCanvasRef.value;
+  if (mainCanvas) {
+    props.parameters.updateMainCanvas?.(mainCanvas);
+  }
 
   if (!mainCanvas || !refVideo || !previewVideo) {
     return;
@@ -381,10 +459,87 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   virtualImage.crossOrigin = 'anonymous';
   virtualImage.src = selectedImage.value || '';
 
+  if (doSegmentation && selectedImage.value) {
+    await new Promise<void>((resolve) => {
+      if (virtualImage.complete && virtualImage.naturalWidth > 0) {
+        resolve();
+        return;
+      }
+
+      virtualImage.onload = () => resolve();
+      virtualImage.onerror = () => resolve();
+    });
+  }
+
   const mediaCanvas = mainCanvas;
   mediaCanvas.width = refVideo.videoWidth;
   mediaCanvas.height = refVideo.videoHeight;
   const ctx = mediaCanvas.getContext('2d');
+  let repeatMode: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' = 'no-repeat';
+  let firstFrameResolved = !doSegmentation;
+  let resolveFirstFrame: (() => void) | null = null;
+  const firstFrameRendered = new Promise<void>((resolve) => {
+    resolveFirstFrame = resolve;
+  });
+
+  const markFirstFrameRendered = () => {
+    if (firstFrameResolved) return;
+    firstFrameResolved = true;
+    resolveFirstFrame?.();
+    resolveFirstFrame = null;
+  };
+
+  const onResults = (results: {
+    segmentationMask: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement | ImageBitmap;
+    image: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement | ImageBitmap;
+  }) => {
+    try {
+      if (
+        pauseSegmentation.value ||
+        !ctx ||
+        mediaCanvas.width <= 0 ||
+        mediaCanvas.height <= 0 ||
+        virtualImage.width <= 0 ||
+        virtualImage.height <= 0
+      ) {
+        return;
+      }
+
+      ctx.save();
+      ctx.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height);
+      ctx.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height);
+      ctx.globalCompositeOperation = 'source-out';
+
+      const pattern = ctx.createPattern(virtualImage, repeatMode);
+      if (pattern) {
+        ctx.fillStyle = pattern;
+      }
+      ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height);
+
+      ctx.globalCompositeOperation = 'destination-atop';
+      ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height);
+      ctx.restore();
+      markFirstFrameRendered();
+    } catch (error) {
+      console.log('Error applying background:', error);
+    }
+  };
+
+  if (doSegmentation) {
+    if (!selfieSegmentation.value) {
+      try {
+        await preloadModel();
+      } catch {
+        console.log('Error preloading model:');
+      }
+    }
+
+    try {
+      selfieSegmentation.value?.onResults(onResults);
+    } catch {
+      // Ignore results binding errors.
+    }
+  }
 
   backgroundHasChanged.value = true;
   props.parameters.updateBackgroundHasChanged?.(true);
@@ -403,8 +558,13 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   }
 
   const segmentImage = async (videoElement: HTMLVideoElement) => {
+    stopPreviewProcessing();
+    const loopVersion = previewLoopVersion.value;
+    let startedProcessing = false;
+
     const processFrame = () => {
       if (
+        loopVersion !== previewLoopVersion.value ||
         !selfieSegmentation.value ||
         pauseSegmentation.value ||
         videoElement.videoWidth === 0 ||
@@ -413,15 +573,32 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
         return;
       }
 
-      void selfieSegmentation.value.send({ image: videoElement });
-      requestAnimationFrame(processFrame);
+      try {
+        void selfieSegmentation.value.send({ image: videoElement }).catch(() => undefined);
+      } catch {
+        // Handle send error silently
+      }
+      previewAnimationFrameId.value = requestAnimationFrame(processFrame);
     };
 
-    videoElement.onloadeddata = () => {
+    const startProcessing = () => {
+      if (startedProcessing) return;
+      startedProcessing = true;
       processFrame();
     };
 
-    setTimeout(async () => {
+    videoElement.onloadeddata = startProcessing;
+    if (videoElement.readyState >= 2 && videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+      startProcessing();
+    }
+
+    previewCaptureTimeoutId.value = setTimeout(async () => {
+      if (loopVersion !== previewLoopVersion.value) return;
+      await Promise.race([
+        firstFrameRendered,
+        new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+      ]);
+      if (loopVersion !== previewLoopVersion.value) return;
       processedStream.value = mediaCanvas.captureStream(parameters.frameRate || 5);
       previewVideo.srcObject = processedStream.value;
       props.parameters.updateProcessedStream?.(processedStream.value);
@@ -524,7 +701,6 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     }
   }
 
-  let repeatMode: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' = 'no-repeat';
   try {
     if (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height) {
       repeatMode = 'repeat';
@@ -533,63 +709,113 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     // Ignore pattern sizing issues.
   }
 
-  const onResults = (results: {
-    segmentationMask: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement | ImageBitmap;
-    image: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement | ImageBitmap;
-  }) => {
-    try {
-      if (
-        pauseSegmentation.value ||
-        !ctx ||
-        mediaCanvas.width <= 0 ||
-        mediaCanvas.height <= 0 ||
-        virtualImage.width <= 0 ||
-        virtualImage.height <= 0
-      ) {
-        return;
-      }
-
-      ctx.save();
-      ctx.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height);
-      ctx.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height);
-      ctx.globalCompositeOperation = 'source-out';
-
-      const pattern = ctx.createPattern(virtualImage, repeatMode);
-      if (pattern) {
-        ctx.fillStyle = pattern;
-      }
-      ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height);
-
-      ctx.globalCompositeOperation = 'destination-atop';
-      ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height);
-      ctx.restore();
-    } catch (error) {
-      console.log('Error applying background:', error);
-    }
-  };
-
-  if (!selfieSegmentation.value) {
-    try {
-      await preloadModel();
-    } catch {
-      console.log('Error preloading model:');
-    }
-  }
-
-  try {
-    selfieSegmentation.value?.onResults(onResults);
-  } catch {
-    // Ignore results binding errors.
+  if (!doSegmentation) {
+    markFirstFrameRendered();
   }
 };
 
-const waitForProcessedStream = async () => {
+const waitForProcessedStream = async (): Promise<MediaStream | null> => {
   let attempts = 0;
-  while (!processedStream.value && attempts < 30) {
+  while (attempts < 40) {
+    const latestProcessedStream = getCurrentParameters().processedStream ?? processedStream.value ?? null;
+    if (latestProcessedStream) {
+      processedStream.value = latestProcessedStream;
+    }
+
+    if (getLiveVideoTrack(processedStream.value)) {
+      return processedStream.value;
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 100));
-    processedStream.value = getCurrentParameters().processedStream ?? processedStream.value ?? null;
     attempts += 1;
   }
+
+  return getLiveVideoTrack(processedStream.value) ? processedStream.value : null;
+};
+
+const waitForBackgroundPublishCompletion = async (
+  expectedTrackId: string | undefined,
+  requiresAsyncPublish: boolean,
+) => {
+  if (!requiresAsyncPublish || !expectedTrackId) {
+    return;
+  }
+
+  for (let attempts = 0; attempts < 14; attempts += 1) {
+    const currentParameters = getCurrentParameters();
+    const producerTrack = currentParameters.videoProducer?.track ?? null;
+
+    if (
+      currentParameters.transportCreated &&
+      producerTrack?.readyState === 'live' &&
+      producerTrack.id === expectedTrackId
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  console.warn('Virtual background publish did not settle before the modal closed.');
+};
+
+const interactiveViewReady = () => Boolean(
+  captureVideoRef.value &&
+    videoPreviewRef.value &&
+    mainCanvasRef.value &&
+    applyBackgroundButtonRef.value &&
+    saveBackgroundButtonRef.value,
+);
+
+const waitForInteractiveView = async () => {
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    await nextTick();
+    if (interactiveViewReady()) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  return interactiveViewReady();
+};
+
+const stopPreviewProcessing = () => {
+  previewLoopVersion.value++;
+  if (previewAnimationFrameId.value !== null) {
+    cancelAnimationFrame(previewAnimationFrameId.value);
+    previewAnimationFrameId.value = null;
+  }
+  if (previewCaptureTimeoutId.value !== null) {
+    clearTimeout(previewCaptureTimeoutId.value);
+    previewCaptureTimeoutId.value = null;
+  }
+};
+
+const resetProcessedStreamForAutoApply = () => {
+  if (!selectedImage.value || !processedStream.value) {
+    return;
+  }
+
+  processedStream.value.getVideoTracks().forEach((track) => track.stop());
+  processedStream.value = null;
+  props.parameters.updateProcessedStream?.(null);
+};
+
+const ensureLiveProcessedStream = async (): Promise<MediaStream> => {
+  let currentProcessedStream = await waitForProcessedStream();
+  if (getLiveVideoTrack(currentProcessedStream)) {
+    return currentProcessedStream as MediaStream;
+  }
+
+  resetProcessedStreamForAutoApply();
+  await applyBackground();
+  currentProcessedStream = await waitForProcessedStream();
+
+  if (getLiveVideoTrack(currentProcessedStream)) {
+    return currentProcessedStream as MediaStream;
+  }
+
+  throw new Error('Virtual background stream was not ready after the camera turned on.');
 };
 
 const applyBackground = async () => {
@@ -628,15 +854,18 @@ const applyBackground = async () => {
   }
 };
 
-const saveBackground = async () => {
+const saveBackground = async (): Promise<{ expectedTrackId?: string; requiresAsyncPublish: boolean }> => {
   const parameters = getCurrentParameters();
   if (parameters.audioOnlyRoom) {
     parameters.showAlert?.({
       message: 'You cannot use a background in an audio only event.',
       type: 'danger',
     });
-    return;
+    return { requiresAsyncPublish: false };
   }
+
+  let expectedTrackId: string | undefined;
+  let requiresAsyncPublish = false;
 
   if (backgroundHasChanged.value && parameters.videoAlreadyOn) {
     if (
@@ -653,9 +882,15 @@ const saveBackground = async () => {
     }
 
     let videoParams = parameters.videoParams ?? {};
+    const requiresProcessedBackground = keepBackground.value && Boolean(selectedImage.value);
+    const processedBackgroundStream = requiresProcessedBackground
+      ? await ensureLiveProcessedStream()
+      : null;
 
-    if (keepBackground.value && selectedImage.value && processedStream.value) {
-      virtualStream.value = processedStream.value;
+    if (keepBackground.value && selectedImage.value && processedBackgroundStream) {
+      processedStream.value = processedBackgroundStream;
+      props.parameters.updateProcessedStream?.(processedBackgroundStream);
+      virtualStream.value = processedBackgroundStream;
       props.parameters.updateVirtualStream?.(virtualStream.value);
       videoParams = { track: virtualStream.value.getVideoTracks()[0] };
       props.parameters.updateVideoParams?.(videoParams);
@@ -685,6 +920,8 @@ const saveBackground = async () => {
     }
 
     const nextTrack = (videoParams as { track?: MediaStreamTrack }).track;
+    expectedTrackId = nextTrack?.id;
+    requiresAsyncPublish = !parameters.transportCreated;
 
     if (keepBackground.value) {
       appliedBackground.value = true;
@@ -725,21 +962,68 @@ const saveBackground = async () => {
   isSaveButtonVisible.value = false;
   isSaveButtonDisabled.value = true;
   resetActionButtons();
+
+  return { expectedTrackId, requiresAsyncPublish };
 };
 
 const handleAutoClickBackground = async () => {
-  if (!autoClickBackground.value || !props.isVisible) {
+  if (!autoClickBackground.value || !props.isVisible || isAutoClickBackgroundRunning) {
     return;
   }
 
+  isAutoClickBackgroundRunning = true;
+  isAutoApplyBusy.value = true;
+
+  const refsReady = await waitForInteractiveView();
+  if (!refsReady) {
+    console.error('Background modal refs not ready after waiting');
+    autoClickBackground.value = false;
+    props.parameters.updateAutoClickBackground?.(false);
+    isAutoClickBackgroundRunning = false;
+    isAutoApplyBusy.value = false;
+    props.onClose();
+    return;
+  }
+
+  let shouldClose = true;
+
   try {
+    resetProcessedStreamForAutoApply();
     await applyBackground();
-    await saveBackground();
+    const publishResult = await saveBackground();
+    await waitForBackgroundPublishCompletion(
+      publishResult.expectedTrackId,
+      publishResult.requiresAsyncPublish,
+    );
+  } catch (error) {
+    shouldClose = false;
+    getCurrentParameters().showAlert?.({
+      message: 'Virtual background could not finish applying automatically. Please review the preview and save again.',
+      type: 'danger',
+    });
+    console.error('Error auto-applying background:', error);
   } finally {
     autoClickBackground.value = false;
     props.parameters.updateAutoClickBackground?.(false);
+    isAutoClickBackgroundRunning = false;
+    isAutoApplyBusy.value = false;
+    if (shouldClose) {
+      props.onClose();
+    }
   }
 };
+
+watch(
+  () => autoClickBackground.value,
+  async (shouldAutoClick) => {
+    if (!shouldAutoClick || !props.isVisible) {
+      return;
+    }
+
+    await nextTick();
+    await handleAutoClickBackground();
+  },
+);
 
 watch(
   () => props.isVisible,
@@ -817,25 +1101,42 @@ onUnmounted(() => {
   }
 });
 
-const modalWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.82, 540) : 520;
+const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 960;
+const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 760;
+const isCompactViewport = viewportHeight < 620;
+const modalWidth = Math.min(viewportWidth * 0.9, isCompactViewport ? 500 : 480);
+const isEmbedded = computed(() => props.renderMode === 'sidebar' || props.renderMode === 'inline');
+const shouldTeleport = computed(() => !isEmbedded.value);
+const shouldRetainProcessingSurface = computed(() =>
+  Boolean(
+    getLiveVideoTrack(processedStream.value) &&
+      keepBackground.value &&
+      appliedBackground.value &&
+      videoAlreadyOnState.value,
+  ),
+);
 
 const getPositionStyles = (position: BackgroundModalPosition): CSSProperties => ({
-  top: position.includes('top') ? '16px' : 'auto',
-  bottom: position.includes('bottom') ? '16px' : 'auto',
-  left: position.includes('Left') ? '16px' : 'auto',
-  right: position.includes('Right') ? '16px' : 'auto',
+  top: position.includes('top') ? '8px' : 'auto',
+  bottom: position.includes('bottom') ? '8px' : 'auto',
+  left: position.includes('Left') ? '8px' : 'auto',
+  right: position.includes('Right') ? '8px' : 'auto',
 });
 
 const defaultOverlayProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal',
   style: {
-    position: 'fixed',
-    inset: 0,
-    background: 'var(--ms-modern-overlay-backdrop)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
+    position: isEmbedded.value ? 'relative' : 'fixed',
+    inset: isEmbedded.value ? 'auto' : 0,
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+    overflow: 'hidden',
+    background: isEmbedded.value ? 'transparent' : 'rgba(8, 13, 23, 0.38)',
+    backdropFilter: isEmbedded.value ? 'none' : 'blur(4px)',
+    WebkitBackdropFilter: isEmbedded.value ? 'none' : 'blur(4px)',
     display: props.isVisible ? 'block' : 'none',
-    zIndex: 999,
+    zIndex: isEmbedded.value ? 'auto' : 999,
   },
 }));
 
@@ -846,22 +1147,27 @@ const overlayNodeProps = computed<HTMLAttributes>(() =>
 const defaultContentProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__content',
   style: {
-    position: 'fixed',
-    width: `${modalWidth}px`,
-    maxWidth: `min(${modalWidth}px, calc(100vw - 32px))`,
-    maxHeight: 'calc(100vh - 32px)',
+    position: isEmbedded.value ? 'relative' : 'fixed',
+    width: isEmbedded.value ? '100%' : `${modalWidth}px`,
+    maxWidth: isEmbedded.value ? '100%' : `min(${modalWidth}px, calc(100vw - 24px))`,
+    height: isEmbedded.value ? '100%' : 'auto',
+    minHeight: 0,
+    maxHeight: isEmbedded.value ? '100%' : 'calc(100dvh - 16px)',
     overflow: 'hidden',
     display: 'grid',
-    gridTemplateRows: 'auto 1fr',
+    gridTemplateRows: 'auto minmax(0, 1fr)',
     gap: 0,
-    borderRadius: '28px',
+    borderRadius: isEmbedded.value ? 0 : '18px',
     border: '1px solid var(--ms-modern-panel-border)',
     background: props.backgroundColor ?? panelGradientBackground,
-    boxShadow: 'var(--ms-modern-shadow-elevated)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
+    boxShadow: isEmbedded.value ? 'none' : 'var(--ms-modern-shadow-elevated)',
+    backdropFilter: isEmbedded.value ? 'none' : 'blur(8px)',
+    WebkitBackdropFilter: isEmbedded.value ? 'none' : 'blur(8px)',
     color: 'var(--ms-modern-text-primary)',
-    ...getPositionStyles(props.position),
+    pointerEvents: isAutoApplyBusy.value ? 'none' : 'auto',
+    userSelect: isAutoApplyBusy.value ? 'none' : 'auto',
+    opacity: isAutoApplyBusy.value ? 0.78 : 1,
+    ...(isEmbedded.value ? {} : getPositionStyles(props.position)),
   } satisfies CSSProperties,
 }));
 
@@ -875,8 +1181,8 @@ const defaultHeaderProps = computed<HTMLAttributes>(() => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '12px',
-    padding: '20px 22px 16px',
+    gap: '10px',
+    padding: '12px 16px 10px',
     borderBottom: '1px solid var(--ms-modern-panel-border)',
     background: panelGradientBackground,
   } satisfies CSSProperties,
@@ -892,7 +1198,7 @@ const defaultTitleProps = computed<HTMLAttributes>(() => ({
     margin: 0,
     color: 'var(--ms-modern-text-primary)',
     fontFamily: 'var(--ms-modern-font-family)',
-    fontSize: '1rem',
+    fontSize: '0.96rem',
     fontWeight: 700,
     letterSpacing: '0.01em',
   } satisfies CSSProperties,
@@ -905,8 +1211,8 @@ const titleNodeProps = computed<HTMLAttributes>(() =>
 const defaultCloseButtonProps = computed<ButtonHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__close',
   style: {
-    width: '38px',
-    height: '38px',
+    width: '32px',
+    height: '32px',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -938,10 +1244,13 @@ const dividerNodeProps = computed<HTMLAttributes>(() =>
 const defaultBodyProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__body',
   style: {
-    padding: '18px 22px 22px',
+    padding: '10px 16px 14px',
     display: 'grid',
-    gap: '16px',
+    gap: '10px',
+    minHeight: 0,
+    alignContent: 'start',
     overflowY: 'auto',
+    overflowX: 'hidden',
   } satisfies CSSProperties,
 }));
 
@@ -952,13 +1261,13 @@ const bodyNodeProps = computed<HTMLAttributes>(() =>
 const defaultImagesContainerNodeProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__thumbs',
   style: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '10px',
-    padding: '14px',
-    borderRadius: '20px',
+    display: 'grid',
+    gridTemplateColumns: viewportWidth >= 560 ? 'repeat(4, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(58px, 1fr))',
+    gap: '6px',
+    padding: '10px',
+    borderRadius: '12px',
     border: '1px solid var(--ms-modern-panel-border)',
-    background: 'var(--ms-modern-panel-surface)',
+    background: 'color-mix(in srgb, var(--ms-modern-panel-surface) 76%, rgba(148, 163, 184, 0.18))',
   } satisfies CSSProperties,
 }));
 
@@ -970,11 +1279,16 @@ const defaultUploadWrapperProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__upload',
   style: {
     display: 'grid',
-    gap: '8px',
-    padding: '14px',
-    borderRadius: '20px',
+    gap: '6px',
+    width: '100%',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'visible',
+    boxSizing: 'border-box',
+    padding: '10px',
+    borderRadius: '12px',
     border: '1px dashed var(--ms-modern-panel-border)',
-    background: 'var(--ms-modern-panel-surface)',
+    background: 'color-mix(in srgb, var(--ms-modern-panel-surface) 70%, rgba(148, 163, 184, 0.22))',
   } satisfies CSSProperties,
 }));
 
@@ -987,7 +1301,7 @@ const defaultUploadLabelProps = computed<LabelHTMLAttributes>(() => ({
   style: {
     color: 'var(--ms-modern-text-primary)',
     fontFamily: 'var(--ms-modern-font-family)',
-    fontSize: '0.86rem',
+    fontSize: '0.78rem',
     fontWeight: 700,
   } satisfies CSSProperties,
 }));
@@ -999,13 +1313,16 @@ const uploadLabelNodeProps = computed<LabelHTMLAttributes>(() =>
 const defaultUploadInputProps = computed<InputHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__upload-input',
   style: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: '14px',
-    border: '1px solid var(--ms-modern-field-border)',
-    background: 'var(--ms-modern-field-background)',
-    color: 'var(--ms-modern-text-primary)',
-    fontFamily: 'var(--ms-modern-font-family)',
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    border: 0,
+    opacity: 0,
+    pointerEvents: 'none',
   } satisfies CSSProperties,
 }));
 
@@ -1028,8 +1345,10 @@ const defaultBackgroundCanvasProps = computed<CanvasHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__background-canvas',
   style: {
     width: '100%',
-    maxHeight: '360px',
-    borderRadius: '18px',
+    aspectRatio: '16 / 9',
+    height: isCompactViewport ? '112px' : 'auto',
+    maxHeight: isCompactViewport ? '112px' : 'min(34vh, 280px)',
+    borderRadius: '12px',
     background: 'var(--ms-modern-field-background)',
     boxShadow: 'var(--ms-modern-shadow-soft)',
     display: showBackgroundCanvas.value ? 'block' : 'none',
@@ -1066,8 +1385,11 @@ const defaultPreviewVideoProps = computed<VideoHTMLAttributes>(() => ({
   playsinline: true,
   style: {
     width: '100%',
-    maxHeight: '360px',
-    borderRadius: '18px',
+    aspectRatio: '16 / 9',
+    objectFit: 'cover',
+    height: isCompactViewport ? '112px' : 'auto',
+    maxHeight: isCompactViewport ? '112px' : 'min(34vh, 280px)',
+    borderRadius: '12px',
     background: 'var(--ms-modern-field-background)',
     boxShadow: 'var(--ms-modern-shadow-soft)',
     display: showPreviewVideo.value ? 'block' : 'none',
@@ -1093,10 +1415,10 @@ const defaultLoadingOverlayProps = computed<HTMLAttributes>(() => ({
     display: isLoading.value ? 'flex' : 'none',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: '18px',
-    background: 'var(--ms-modern-overlay-backdrop)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
+    borderRadius: '12px',
+    background: 'rgba(8, 13, 23, 0.46)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
   } satisfies CSSProperties,
 }));
 
@@ -1115,7 +1437,7 @@ const defaultButtonsWrapperProps = computed<HTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__actions',
   style: {
     display: 'flex',
-    gap: '12px',
+    gap: '10px',
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
   } satisfies CSSProperties,
@@ -1128,8 +1450,8 @@ const buttonsWrapperNodeProps = computed<HTMLAttributes>(() =>
 const defaultApplyButtonProps = computed<ButtonHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__apply',
   style: {
-    minHeight: '44px',
-    minWidth: '180px',
+    minHeight: '36px',
+    minWidth: '136px',
     borderRadius: '9999px',
     border: '1px solid var(--ms-modern-panel-border)',
     paddingInline: '16px',
@@ -1156,8 +1478,8 @@ const applyButtonNodeProps = computed<ButtonHTMLAttributes>(() => {
 const defaultSaveButtonProps = computed<ButtonHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__save',
   style: {
-    minHeight: '44px',
-    minWidth: '180px',
+    minHeight: '36px',
+    minWidth: '136px',
     borderRadius: '9999px',
     border: 'none',
     paddingInline: '16px',
@@ -1199,13 +1521,105 @@ const defaultLoadingSpinner = computed<VNodeChild>(() =>
 
 const thumbnailContainerStyle = computed<CSSProperties>(() => ({
   display: 'grid',
-  gap: '10px',
+  gap: '6px',
 }));
+
+const statusPanelStyle = computed<CSSProperties>(() => ({
+  display: 'grid',
+  gap: '8px',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border:
+    guidanceTone.value === 'success'
+      ? '1px solid color-mix(in srgb, var(--ms-modern-success, #22c55e) 32%, transparent)'
+      : '1px solid color-mix(in srgb, var(--ms-modern-brand-primary, #3b82f6) 26%, transparent)',
+  background:
+    guidanceTone.value === 'success'
+      ? 'color-mix(in srgb, var(--ms-modern-success, #22c55e) 12%, var(--ms-modern-panel-surface))'
+      : 'color-mix(in srgb, var(--ms-modern-brand-primary, #3b82f6) 10%, var(--ms-modern-panel-surface))',
+}));
+
+const statusChipStyle = computed<CSSProperties>(() => ({
+  width: 'fit-content',
+  padding: '4px 10px',
+  borderRadius: '9999px',
+  fontFamily: 'var(--ms-modern-font-family)',
+  fontSize: '0.68rem',
+  fontWeight: 800,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color:
+    guidanceTone.value === 'success'
+      ? 'var(--ms-modern-success-contrast, #dcfce7)'
+      : 'var(--ms-modern-text-primary)',
+  background:
+    guidanceTone.value === 'success'
+      ? 'color-mix(in srgb, var(--ms-modern-success, #22c55e) 26%, transparent)'
+      : 'color-mix(in srgb, var(--ms-modern-brand-primary, #3b82f6) 16%, transparent)',
+}));
+
+const statusCopyStyle = {
+  margin: 0,
+  fontFamily: 'var(--ms-modern-font-family)',
+  fontSize: '0.84rem',
+  lineHeight: 1.55,
+  color: 'var(--ms-modern-text-primary)',
+} satisfies CSSProperties;
+
+const uploadPickerRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  width: '100%',
+  minWidth: 0,
+  maxWidth: '100%',
+  padding: '10px',
+  borderRadius: '12px',
+  border: '1px solid var(--ms-modern-field-border)',
+  background: 'var(--ms-modern-field-background)',
+  boxSizing: 'border-box',
+} satisfies CSSProperties;
+
+const uploadPickerButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  minHeight: '38px',
+  padding: '0 14px',
+  borderRadius: '10px',
+  background: 'color-mix(in srgb, var(--ms-modern-brand-primary) 18%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--ms-modern-brand-primary) 30%, transparent)',
+  color: 'var(--ms-modern-text-primary)',
+  fontFamily: 'var(--ms-modern-font-family)',
+  fontSize: '0.8rem',
+  fontWeight: 700,
+  cursor: 'pointer',
+} satisfies CSSProperties;
+
+const uploadFileNameStyle = {
+  flex: 1,
+  minWidth: 0,
+  fontFamily: 'var(--ms-modern-font-family)',
+  fontSize: '0.8rem',
+  color: 'var(--ms-modern-text-secondary)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} satisfies CSSProperties;
+
+const uploadHelperTextStyle = {
+  margin: 0,
+  fontFamily: 'var(--ms-modern-font-family)',
+  fontSize: '0.74rem',
+  lineHeight: 1.45,
+  color: 'var(--ms-modern-text-secondary)',
+} satisfies CSSProperties;
 
 const sectionEyebrowStyle = {
   margin: 0,
   fontFamily: 'var(--ms-modern-font-family)',
-  fontSize: '0.75rem',
+  fontSize: '0.7rem',
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.08em',
@@ -1215,18 +1629,19 @@ const sectionEyebrowStyle = {
 const previewStageStyle = {
   position: 'relative',
   display: 'grid',
-  gap: '12px',
-  padding: '14px',
-  borderRadius: '20px',
+  gap: '8px',
+  padding: '8px',
+  borderRadius: '12px',
   border: '1px solid var(--ms-modern-panel-border)',
-  background: 'var(--ms-modern-panel-surface)',
+  background: 'color-mix(in srgb, var(--ms-modern-panel-surface) 72%, rgba(148, 163, 184, 0.2))',
 } satisfies CSSProperties;
 
 const thumbnailButtonStyle = (active: boolean, isNone = false): CSSProperties => ({
-  width: '88px',
-  minHeight: '64px',
+  width: '100%',
+  minHeight: isCompactViewport ? '50px' : '56px',
+  aspectRatio: isNone ? '1.3 / 1' : '16 / 10',
   padding: 0,
-  borderRadius: '16px',
+  borderRadius: '10px',
   border: active ? '2px solid var(--ms-modern-brand-primary)' : '1px solid var(--ms-modern-panel-border)',
   background: isNone ? 'var(--ms-modern-field-background)' : 'var(--ms-modern-panel-surface)',
   boxShadow: active ? '0 0 0 3px color-mix(in srgb, var(--ms-modern-brand-primary) 20%, transparent)' : 'none',
@@ -1255,7 +1670,7 @@ const handleSaveClick = (event: MouseEvent) => {
   }
 };
 
-const thumbnailNodes = computed(() => {
+const createThumbnailNodes = () => {
   const nodes = defaultBackgroundEntries.map((entry) => {
     const thumbnailSrc = `https://mediasfu.com/images/backgrounds/${entry.thumb}`;
     const { previewSrc, fullSrc } = chooseResolutionSource(entry);
@@ -1339,12 +1754,12 @@ const thumbnailNodes = computed(() => {
   }
 
   return nodes;
-});
+};
 
-const defaultHeaderNode = computed(() => {
+const createDefaultHeaderNode = () => {
   const defaultCloseIcon = props.closeIconComponent ?? h(FontAwesomeIcon, { icon: faTimes });
 
-  return h(headerNodeProps.value, [
+  return h('div', headerNodeProps.value, [
     h('h2', titleNodeProps.value, toRenderableChildren(normalizedTitle.value)),
     h(
       'button',
@@ -1356,16 +1771,15 @@ const defaultHeaderNode = computed(() => {
       defaultCloseIcon,
     ),
   ]);
-});
+};
 
-const headerNode = computed<VNodeChild>(() =>
+const createHeaderNode = (): VNodeChild =>
   props.renderHeader
-    ? props.renderHeader({ defaultHeader: defaultHeaderNode.value, onClose: props.onClose })
-    : defaultHeaderNode.value,
-);
+    ? props.renderHeader({ defaultHeader: createDefaultHeaderNode(), onClose: props.onClose })
+    : createDefaultHeaderNode();
 
-const defaultButtonsNode = computed(() =>
-  h(buttonsWrapperNodeProps.value, [
+const createDefaultButtonsNode = () =>
+  h('div', buttonsWrapperNodeProps.value, [
     h(
       'button',
       {
@@ -1390,26 +1804,28 @@ const defaultButtonsNode = computed(() =>
       },
         toRenderableChildren(normalizedSaveLabel.value),
     ),
-  ]),
-);
+  ]);
 
-const buttonsNode = computed<VNodeChild>(() =>
+const createButtonsNode = (): VNodeChild =>
   props.renderButtons
     ? props.renderButtons({
-        defaultButtons: defaultButtonsNode.value,
+        defaultButtons: createDefaultButtonsNode(),
         applyButtonRef: applyBackgroundButtonRef,
         saveButtonRef: saveBackgroundButtonRef,
       })
-    : defaultButtonsNode.value,
-);
+    : createDefaultButtonsNode();
 
-const defaultBodyNode = computed(() =>
-  h(bodyNodeProps.value, [
+const createDefaultBodyNode = () =>
+  h('div', bodyNodeProps.value, [
+    h('div', { style: statusPanelStyle.value }, [
+      h('span', { style: statusChipStyle.value }, stageStatusCopy.value),
+      h('p', { style: statusCopyStyle }, guidanceCopy.value),
+    ]),
     h('div', { style: thumbnailContainerStyle.value }, [
       h('p', { style: sectionEyebrowStyle }, 'Built-in backgrounds'),
-      h(imagesContainerNodeProps.value, thumbnailNodes.value),
+      h('div', imagesContainerNodeProps.value, createThumbnailNodes()),
     ]),
-    h(uploadWrapperNodeProps.value, [
+    h('div', uploadWrapperNodeProps.value, [
       h(
         'label',
         { ...uploadLabelNodeProps.value, for: 'ms-modern-background-upload' },
@@ -1421,6 +1837,15 @@ const defaultBodyNode = computed(() =>
         type: 'file',
         onChange: handleImageUpload,
       }),
+      h('div', { style: uploadPickerRowStyle }, [
+        h(
+          'label',
+          { for: 'ms-modern-background-upload', style: uploadPickerButtonStyle },
+          'Choose image',
+        ),
+        h('span', { style: uploadFileNameStyle }, uploadFileName.value),
+      ]),
+      h('p', { style: uploadHelperTextStyle }, 'PNG and JPG files up to 2MB work best.'),
     ]),
     h('div', { style: thumbnailContainerStyle.value }, [
       h('p', { style: sectionEyebrowStyle }, 'Preview'),
@@ -1448,35 +1873,31 @@ const defaultBodyNode = computed(() =>
         h('div', loadingOverlayNodeProps.value, [defaultLoadingSpinner.value]),
       ]),
     ]),
-    buttonsNode.value,
-  ]),
-);
+    createButtonsNode(),
+  ]);
 
-const bodyNode = computed<VNodeChild>(() =>
-  props.renderBody ? props.renderBody({ defaultBody: defaultBodyNode.value }) : defaultBodyNode.value,
-);
+const createBodyNode = (): VNodeChild =>
+  props.renderBody ? props.renderBody({ defaultBody: createDefaultBodyNode() }) : createDefaultBodyNode();
 
-const defaultContentNode = computed(() =>
-  h(contentNodeProps.value, [
-    headerNode.value,
+const createDefaultContentNode = () =>
+  h('div', contentNodeProps.value, [
+    createHeaderNode(),
     h('hr', dividerNodeProps.value),
-    bodyNode.value,
-  ]),
-);
+    createBodyNode(),
+  ]);
 
-const contentNode = computed<VNodeChild>(() =>
+const createContentNode = (): VNodeChild =>
   props.renderContent
-    ? props.renderContent({ defaultContent: defaultContentNode.value })
-    : defaultContentNode.value,
-);
+    ? props.renderContent({ defaultContent: createDefaultContentNode() })
+    : createDefaultContentNode();
 
-const overlayNode = computed<VNodeChild>(() => {
-  if (!props.isVisible) {
+const renderOverlayNode = (): VNodeChild => {
+  if (!props.isVisible && !shouldRetainProcessingSurface.value) {
     return null;
   }
 
-  return h('div', overlayNodeProps.value, [contentNode.value]);
-});
+  return h('div', overlayNodeProps.value, [createContentNode()]);
+};
 </script>
 
 <style scoped>
@@ -1488,5 +1909,52 @@ const overlayNode = computed<VNodeChild>(() => {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.ms-modern-background-modal__body {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ms-modern-text-muted, #94a3b8) 50%, transparent) transparent;
+}
+
+.ms-modern-background-modal__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ms-modern-background-modal__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ms-modern-background-modal__body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ms-modern-text-muted, #94a3b8) 42%, transparent);
+  border-radius: 9999px;
+}
+
+.ms-modern-background-modal__upload-input::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--ms-modern-brand-primary, #6366f1) 18%, var(--ms-modern-field-background));
+  color: var(--ms-modern-text-primary);
+  font: inherit;
+  font-weight: 700;
+}
+
+.ms-modern-background-modal__upload {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.ms-modern-background-modal__upload-input {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -659,8 +659,11 @@ const controlButtonStyle: CSSProperties = {
 const nameColumnStyle: CSSProperties = {
   justifyContent: 'center',
   alignItems: 'center',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  padding: '5px',
+  backgroundColor: 'rgba(0, 0, 0, 0.36)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.18)',
+  borderRadius: '999px',
+  padding: '4px 9px',
   marginRight: '2px',
   fontSize: 'small',
   textAlign: 'center',
@@ -669,6 +672,7 @@ const nameColumnStyle: CSSProperties = {
 const nameTextStyle: CSSProperties = {
   fontSize: 'small',
   fontWeight: 'bolder',
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.35)',
 };
 
 const waveformWebStyle: CSSProperties = {

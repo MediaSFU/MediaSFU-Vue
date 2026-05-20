@@ -22,6 +22,8 @@ docs
 !.vscode/extensions.json
 .idea
 .DS_Store
+._*
+__MACOSX/
 *.suo
 *.ntvs*
 *.njsproj

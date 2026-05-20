@@ -30,6 +30,7 @@ import ParticipantsModal from './components/participantsComponents/ParticipantsM
 import ConfirmExitModal from './components/exitComponents/ConfirmExitModal.vue';
 import ScreenboardModal from './components/screenboardComponents/ScreenboardModal.vue';
 import { createRoomOnMediaSFU, joinRoomOnMediaSFU } from './utils/mediasfuRooms';
+import { getDemoCloudConfig } from './utils/demoCloudConfig';
 
 import type { Participant, ShowAlert } from '../src/index';
 import type { MediasfuUICustomOverrides } from './types/ui-overrides';
@@ -97,9 +98,10 @@ const enableModalOverrides = true;
 // const enableNoUIPreJoin = false; // Reserved for future pre-join options
 // const enableDebugPanel = false; // Reserved for future debug panel
 
-const mediasfuApiUserName = import.meta.env.VITE_MEDIASFU_API_USERNAME?.trim() || '';
-const mediasfuApiKey = import.meta.env.VITE_MEDIASFU_API_KEY?.trim() || '';
-const mediasfuLocalLink = import.meta.env.VITE_MEDIASFU_LOCAL_LINK?.trim() || '';
+const demoCloudConfig = getDemoCloudConfig();
+const mediasfuApiUserName = demoCloudConfig.credentials.apiUserName;
+const mediasfuApiKey = demoCloudConfig.credentials.apiKey;
+const mediasfuLocalLink = demoCloudConfig.localLink;
 
 const cloudCredentials = {
   apiUserName: mediasfuApiUserName,

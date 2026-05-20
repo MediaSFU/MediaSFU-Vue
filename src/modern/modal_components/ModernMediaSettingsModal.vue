@@ -39,6 +39,7 @@ type MediaSettingsSection = 'video' | 'audio';
 
 export interface ModernMediaSettingsModalProps extends MediaSettingsModalProps {
   renderMode?: ModernMediaSettingsRenderMode;
+  onOpenBackgroundSidebar?: () => void;
 }
 
 const props = defineProps<ModernMediaSettingsModalProps>();
@@ -104,7 +105,13 @@ const handleSwitchCamera = async () => {
 };
 
 const handleVirtualBackground = () => {
-  liveParameters.value.updateIsBackgroundModalVisible(!liveParameters.value.isBackgroundModalVisible);
+  if (props.onOpenBackgroundSidebar) {
+    props.onOpenBackgroundSidebar();
+    return;
+  }
+
+  liveParameters.value.updateIsBackgroundModalVisible(true);
+  props.onMediaSettingsClose?.();
 };
 
 const defaultContentProps = computed<HTMLAttributes>(() => ({
