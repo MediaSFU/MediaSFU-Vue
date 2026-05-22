@@ -27,7 +27,7 @@ import ClassicMessagesModal from '../../components/messageComponents/MessagesMod
 import type { MessagesModalProps } from '../../components/messageComponents/MessagesModal.vue';
 import type { Message } from '../../SharedTypes';
 import { mergeAttrObjects } from '../display_components/styleUtils';
-import { sendMessage } from 'mediasfu-shared';
+import { sendMessage } from '../../services/sendMessage';
 
 type ModernMessagesRenderMode = 'modal' | 'sidebar' | 'inline';
 

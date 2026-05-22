@@ -147,7 +147,7 @@
           <span>Private messages</span>
         </div>
         <p :style="styles.infoBoxText">
-          Your direct messages are only visible to you and the host or co-host.
+          Direct messages you send here go straight to the host and stay private.
         </p>
       </div>
 
@@ -381,10 +381,10 @@ const placeholderText = computed(() => {
     if (senderId.value) {
       return `Send a direct message to ${senderId.value}`;
     }
-    if (props.focusedInput && props.startDirectMessage && props.directMessageDetails) {
+    if (props.directMessageDetails) {
       return `Send a direct message to ${props.directMessageDetails.name}`;
     }
-    return 'Select a message to reply to';
+    return props.islevel === '2' ? 'Select a message to reply to' : 'Send a direct message to the host';
   }
   return props.eventType === 'chat' ? 'Send a message' : 'Send a message to everyone';
 });
@@ -401,7 +401,7 @@ const emptyStateHint = computed(() => {
   if (props.type === 'direct') {
     return props.islevel === '2'
       ? 'Start a conversation from the Participants panel.'
-      : 'Reply to another participant to begin a private conversation.';
+      : 'Send a private message to the host from here.';
   }
 
   return 'Send a message to everyone in the room.';
@@ -603,7 +603,7 @@ const handleSendButton = async () => {
 
   await props.onSendMessagePress({
     message,
-    receivers: props.type === 'direct' ? [senderId.value!] : [],
+    receivers: props.type === 'direct' && senderId.value ? [senderId.value] : [],
     group: props.type === 'group',
     messagesLength: props.messagesLength,
     member: props.member,

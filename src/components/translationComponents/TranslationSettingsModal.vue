@@ -425,7 +425,7 @@ import type { Participant, TranslationVoiceConfig } from 'mediasfu-shared';
 import type { Socket } from 'socket.io-client';
 import type { TranslationRoomConfig } from '../../services/translationReceiveMethods';
 import {
-  SUPPORTED_LANGUAGE_CODES,
+  COMMON_LANGUAGE_CODES,
   TTS_PROVIDERS,
   fetchVoicesViaSocket,
   getLanguageName,
@@ -515,7 +515,7 @@ const props = withDefaults(defineProps<TranslationSettingsModalProps>(), {
   title: 'Translation Settings',
 });
 
-const allLanguages: LanguageOption[] = SUPPORTED_LANGUAGE_CODES.map((code) => ({
+const allLanguages: LanguageOption[] = COMMON_LANGUAGE_CODES.map((code) => ({
   code,
   name: getLanguageName(code),
 }));
@@ -639,7 +639,7 @@ const buildFilteredLanguages = (
   const allowed = new Set((allowedEntries ?? []).map((entry) => entry.code));
   const blocked = new Set(blockedEntries ?? []);
 
-  let codes = [...SUPPORTED_LANGUAGE_CODES];
+  let codes = [...COMMON_LANGUAGE_CODES];
 
   if (mode === 'allowlist' && allowed.size > 0) {
     codes = codes.filter((code) => allowed.has(code));

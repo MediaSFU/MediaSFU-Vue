@@ -158,7 +158,7 @@ import { h, isVNode, defineComponent, ref, computed, watch, type PropType, type 
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import MessagePanel from './MessagePanel.vue';
-import { sendMessage, type SendMessageOptions } from 'mediasfu-shared';
+import { sendMessage, type SendMessageOptions } from '../../services/sendMessage';
 import type {
   CoHostResponsibility,
   EventType,
