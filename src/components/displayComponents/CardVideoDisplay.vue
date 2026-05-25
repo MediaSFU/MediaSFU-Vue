@@ -163,38 +163,58 @@ const props = withDefaults(defineProps<CardVideoDisplayProps>(), {
 
 const videoRef = ref<HTMLVideoElement | null>(null);
 
-const setVideoStream = (stream: MediaStream | null | undefined) => {
+const resolveAttachableStream = (streamSource: unknown): MediaStream | null => {
+  if (!streamSource || typeof streamSource !== 'object') {
+    return null;
+  }
+
+  const mediaStreamCandidate = streamSource as MediaStream & {
+    stream?: unknown;
+  };
+
+  if (
+    typeof mediaStreamCandidate.getTracks === 'function' ||
+    typeof mediaStreamCandidate.getVideoTracks === 'function'
+  ) {
+    return mediaStreamCandidate as MediaStream;
+  }
+
+  return resolveAttachableStream(mediaStreamCandidate.stream);
+};
+
+const setVideoStream = (streamSource: unknown) => {
   const element = videoRef.value;
   if (!(element instanceof HTMLVideoElement)) {
     return;
   }
 
+  if (!streamSource) {
+    element.srcObject = null;
+    return;
+  }
+
+  const stream = resolveAttachableStream(streamSource);
   if (!stream) {
     element.srcObject = null;
     return;
   }
 
-  if (typeof MediaStream !== 'undefined' && !(stream instanceof MediaStream)) {
-    element.srcObject = null;
-    return;
+  if (element.srcObject !== stream) {
+    element.srcObject = stream;
   }
 
-  element.srcObject = stream;
-
-  if (stream instanceof MediaStream) {
-    const playPromise = element.play?.();
-    if (playPromise instanceof Promise) {
-      playPromise.catch(() => {
-        /* Suppress autoplay rejections */
-      });
-    }
+  const playPromise = element.play?.();
+  if (playPromise instanceof Promise) {
+    playPromise.catch(() => {
+      /* Suppress autoplay rejections */
+    });
   }
 };
 
 // Watch videoStream changes and update srcObject
 watch(
-  () => props.videoStream,
-  (newStream) => {
+  () => [props.videoStream, resolveAttachableStream(props.videoStream)],
+  ([newStream]) => {
     setVideoStream(newStream ?? null);
   },
   { immediate: true, flush: 'post' }

@@ -1,6 +1,6 @@
 {
   "name": "mediasfu-vue",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": false,
   "description": "mediasfu-vue – Vue 3 WebRTC SDK for video conferencing, webinars, broadcasts, live streaming, chat, recording, whiteboard, and AI agents. Composition API, prebuilt rooms, and fully custom UIs.",
   "main": "dist/index.cjs",
@@ -94,7 +94,7 @@
   "dependencies": {
     "@fortawesome/react-fontawesome": "^3.1.0",
     "bootstrap": "^5.3.8",
-    "mediasfu-shared": "^1.0.5",
+    "mediasfu-shared": "^1.0.6",
     "universal-cookie": "^8.0.1"
   },
   "devDependencies": {

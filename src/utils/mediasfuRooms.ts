@@ -25,7 +25,7 @@ const isCredentialInvalid = (apiUserName: string, apiKey: string) => {
 
 const normaliseLocalLink = (link: string) => link.replace(/\/$/, '')
 
-const DEFAULT_MEDIA_SFU_ROOM_API_URL = 'https://mediasfu.com/v1/rooms/'
+const DEFAULT_MEDIA_SFU_ROOM_API_URL = 'https://mediasfu.com/v1/rooms/';
 
 const normaliseManagedRoomApi = (link: string) => {
   const normalisedLink = normaliseLocalLink(link)

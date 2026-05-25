@@ -47,7 +47,6 @@ import ModernScreenboardModal from '../modal_components/ModernScreenboardModal.v
 import ModernShareEventModal from '../modal_components/ModernShareEventModal.vue';
 import ModernTranslationSettingsModal from '../modal_components/ModernTranslationSettingsModal.vue';
 import ModernWaitingModal from '../modal_components/ModernWaitingModal.vue';
-import ModernScreenboard from '../screenboard_components/ModernScreenboard.vue';
 import ModernWhiteboard from '../whiteboard_components/ModernWhiteboard.vue';
 import { ModernPreJoinPage, ModernWelcomePage } from '../misc_components';
 import type { MediasfuUICustomOverrides } from '../../types/ui-overrides';
@@ -172,9 +171,6 @@ const mergedUiOverrides = computed<MediasfuUICustomOverrides>(() => {
     },
     whiteboard: {
       component: ModernWhiteboard,
-    },
-    screenboard: {
-      component: ModernScreenboard,
     },
     screenboardModal: {
       component: ModernScreenboardModal,

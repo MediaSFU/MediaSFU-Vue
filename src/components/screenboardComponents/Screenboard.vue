@@ -156,8 +156,7 @@
     ref="screenboardRef"
     :style="{
       position: 'relative',
-      display: showAspect ? 'flex' : 'none',
-      flexDirection: 'column',
+      display: showAspect ? 'block' : 'none',
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'transparent',
@@ -175,7 +174,6 @@
       :style="{
         position: 'relative',
         display: 'flex',
-        flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
@@ -184,6 +182,7 @@
         overflow: 'hidden',
         top: 0,
         left: 0,
+        pointerEvents: annotateScreenStream ? 'auto' : 'none',
       }"
     >
       <button
@@ -194,6 +193,7 @@
           top: '5px',
           right: '10px',
           zIndex: 1000,
+          pointerEvents: 'auto',
         }"
         @click="toggleAnnotate"
       >
@@ -212,6 +212,7 @@
           top: '5px',
           right: '55px',
           zIndex: 1000,
+          pointerEvents: 'auto',
         }"
         @click="toggleToolbar"
       >
@@ -226,8 +227,8 @@
           top: '5px',
           right: '105px',
           zIndex: 1000,
-          backgroundColor: 'transparent',
           display: toolbarVisible ? 'flex' : 'none',
+          pointerEvents: 'auto',
         }"
       >
         <div
@@ -384,9 +385,16 @@
       <canvas
         id="screenboardCanvas"
         ref="canvasRef"
-        width="1280"
-        height="720"
+        :width="Math.max(Math.round(customWidth), 1)"
+        :height="Math.max(Math.round(customHeight), 1)"
         :style="{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
           padding: 0,
           margin: 0,
           display: annotateScreenStream ? 'block' : 'none',

@@ -7,8 +7,15 @@ import './modern/theme/variables.css'
 import App from './App.vue'
 import AppBroadcast from './AppBroadcast.vue'
 import ModernUIParityAudit from './examples/ModernUIParityAudit.vue'
+import { setDemoCloudRuntimeEnv } from './utils/demoCloudConfig'
 
 library.add(fas)
+
+setDemoCloudRuntimeEnv({
+	VITE_MEDIASFU_API_USERNAME: import.meta.env.VITE_MEDIASFU_API_USERNAME,
+	VITE_MEDIASFU_API_KEY: import.meta.env.VITE_MEDIASFU_API_KEY,
+	VITE_MEDIASFU_LOCAL_LINK: import.meta.env.VITE_MEDIASFU_LOCAL_LINK,
+})
 
 const searchParams = typeof window !== 'undefined'
 	? new URLSearchParams(window.location.search)

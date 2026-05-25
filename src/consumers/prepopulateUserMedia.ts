@@ -208,10 +208,56 @@ export const prepopulateUserMedia = async ({
       }
 
       if (host && hostStream) {
-        const isDirectStream = shared || !(hostStream as Stream).stream;
-        const effectiveStream = isDirectStream
-          ? (hostStream as MediaStream | null)
-          : ((hostStream as Stream).stream ?? null);
+        const resolveScreenShareStream = (
+          streamCandidate: MediaStream | Stream | null,
+          producerId?: string,
+        ): MediaStream | null => {
+          if (!streamCandidate) {
+            return null;
+          }
+
+          if (shared) {
+            return localStreamScreen;
+          }
+
+          if (typeof (streamCandidate as MediaStream).getTracks === 'function') {
+            return streamCandidate as MediaStream;
+          }
+
+          const streamRecord = streamCandidate as Stream;
+          if (streamRecord.stream) {
+            return streamRecord.stream;
+          }
+
+          const candidateProducerIds = [producerId, streamRecord.producerId].filter(
+            (value): value is string => Boolean(value)
+          );
+
+          for (const candidateProducerId of candidateProducerIds) {
+            const remoteMatch = remoteScreenStream.find(
+              (stream) => stream.producerId === candidateProducerId
+            )?.stream;
+            if (remoteMatch) {
+              return remoteMatch;
+            }
+
+            const allVideoMatch = (
+              allVideoStreams.find(
+                (stream) => (stream as Stream).producerId === candidateProducerId
+              ) as Stream | undefined
+            )?.stream;
+            if (allVideoMatch) {
+              return allVideoMatch;
+            }
+          }
+
+          return remoteScreenStream.find((stream) => Boolean(stream.stream))?.stream ?? null;
+        };
+
+        const effectiveStream = resolveScreenShareStream(hostStream, host.ScreenID);
+        if (!effectiveStream) {
+          return newComponents;
+        }
 
         if (customVideoCard) {
           newComponents.push({
