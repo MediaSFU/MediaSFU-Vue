@@ -153,7 +153,7 @@
 // import ConfirmExitModal from '@/components/exitComponents/ConfirmExitModal.vue';
 // import { io } from 'socket.io-client';
 //
-// const socket = io('http://localhost:3000');
+// const socket = io('https://your-socket-server.example.com');
 //
 // const MyConfirmExitModal = {
 //   name: 'MyConfirmExitModal',

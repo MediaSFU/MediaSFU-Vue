@@ -165,7 +165,7 @@
       height: '100%',
       maxWidth: '100%',
       maxHeight: '100%',
-      overflow: 'auto',
+      overflow: 'hidden',
     }"
   >
     <div
@@ -385,8 +385,8 @@
       <canvas
         id="screenboardCanvas"
         ref="canvasRef"
-        :width="Math.max(Math.round(customWidth), 1)"
-        :height="Math.max(Math.round(customHeight), 1)"
+        width="1280"
+        height="720"
         :style="{
           position: 'absolute',
           top: 0,
@@ -416,6 +416,7 @@ import {
   faEraser,
   faSearch,
 } from '@fortawesome/free-solid-svg-icons';
+import { getCanvasPoint } from './canvasCoordinates';
 import './Screenboard.css';
 import type { ShowAlert, SleepType } from '../../../../SharedTypes';
 
@@ -686,21 +687,22 @@ const handleClickOutside = (event: MouseEvent) => {
 };
 
 const startDrawing = (e: MouseEvent) => {
-  if (!ctx) return;
+  if (!ctx || !canvasRef.value) return;
+  const point = getCanvasPoint(e, canvasRef.value);
   isDrawing.value = true;
-  startX.value = e.offsetX;
-  startY.value = e.offsetY;
+  startX.value = point.x;
+  startY.value = point.y;
 
   if (mode.value === 'erase') {
-    erase(e.offsetX, e.offsetY);
+    erase(point.x, point.y);
   } else if (mode.value === 'draw' || mode.value === 'freehand') {
     ctx.beginPath();
-    ctx.moveTo(e.offsetX, e.offsetY);
+    ctx.moveTo(point.x, point.y);
     if (mode.value === 'freehand') {
       freehandDrawing.value = [
         {
-          x: e.offsetX,
-          y: e.offsetY,
+          x: point.x,
+          y: point.y,
           color: color.value,
           thickness: brushThickness.value,
         },
@@ -710,33 +712,34 @@ const startDrawing = (e: MouseEvent) => {
 };
 
 const draw = (e: MouseEvent) => {
-  if (!ctx || !isDrawing.value) return;
+  if (!ctx || !canvasRef.value || !isDrawing.value) return;
+  const point = getCanvasPoint(e, canvasRef.value);
 
-  currentX.value = e.offsetX;
-  currentY.value = e.offsetY;
+  currentX.value = point.x;
+  currentY.value = point.y;
 
   if (mode.value === 'erase') {
-    erase(e.offsetX, e.offsetY);
+    erase(point.x, point.y);
   } else if (mode.value === 'draw') {
     ctx.clearRect(0, 0, canvas?.width ?? 0, canvas?.height ?? 0);
     drawShapes();
     drawLine(
       startX.value,
       startY.value,
-      e.offsetX,
-      e.offsetY,
+      point.x,
+      point.y,
       color.value,
       lineThickness.value,
       lineType.value
     );
   } else if (mode.value === 'freehand') {
-    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.lineTo(point.x, point.y);
     ctx.strokeStyle = color.value;
     ctx.lineWidth = brushThickness.value;
     ctx.stroke();
     freehandDrawing.value.push({
-      x: e.offsetX,
-      y: e.offsetY,
+      x: point.x,
+      y: point.y,
       color: color.value,
       thickness: brushThickness.value,
     });
@@ -748,8 +751,8 @@ const draw = (e: MouseEvent) => {
         shape.value,
         startX.value,
         startY.value,
-        e.offsetX,
-        e.offsetY,
+        point.x,
+        point.y,
         color.value,
         lineThickness.value,
         lineType.value

@@ -15,4 +15,10 @@ declare module '@mediapipe/selfie_segmentation' {
     onResults(callback: (results: SelfieSegmentationResults) => void): void
     send(input: SelfieSegmentationInput): Promise<void>
   }
+
+  const selfieSegmentationModule: {
+    SelfieSegmentation: typeof SelfieSegmentation
+  }
+
+  export default selfieSegmentationModule
 }

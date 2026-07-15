@@ -67,7 +67,7 @@
  * @example Local Development Mode
  * // <MediasfuGeneric
  *   // defaultEventType="conference"
- *   // localLink="http://localhost:3000"
+ *   // localLink="https://your-mediasfu-server.example.com"
  *   // :connectMediaSFU="false"
  *   // useLocalUIMode
  * // />
@@ -1143,7 +1143,7 @@ export interface MediasfuGenericOptions {
   /**
    * Local server URL for self-hosted MediaSFU deployments
    * @default ""
-   * @example "http://localhost:3000"
+   * @example "https://your-mediasfu-server.example.com"
    * @example "https://your-mediasfu-server.com"
    */
   localLink?: string;
@@ -8367,4 +8367,3 @@ watch(mainHeightWidth, (newValue, oldValue) => {
   overflow: hidden;
 }
 </style>
-

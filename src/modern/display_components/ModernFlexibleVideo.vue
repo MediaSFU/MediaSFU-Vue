@@ -9,8 +9,6 @@ import {
   h,
   isVNode,
   useSlots,
-  watch,
-  ref,
   type CSSProperties,
   type HTMLAttributes,
   type PropType,
@@ -18,6 +16,7 @@ import {
   type VNodeChild,
 } from 'vue';
 import type { RenderableComponent } from '../../types/renderable-component';
+import { getContainedContentRect } from '../../components/screenboardComponents/canvasCoordinates';
 import { mergeAttrObjects } from './styleUtils';
 
 interface RenderCellOptions {
@@ -100,41 +99,19 @@ const props = withDefaults(defineProps<ModernFlexibleVideoProps>(), {
 
 const slots = useSlots();
 
-const cardWidth = ref(0);
-const cardHeight = ref(0);
-const cardLeft = ref(0);
-const canvasLeft = ref(0);
+const screenContentRect = computed(() => {
+  const videoTrack = props.annotateScreenStream
+    ? props.localStreamScreen?.getVideoTracks()[0]
+    : undefined;
+  const { width = 0, height = 0 } = videoTrack?.getSettings() ?? {};
 
-watch(
-  [
-    () => props.customWidth,
-    () => props.customHeight,
-    () => props.localStreamScreen,
-    () => props.annotateScreenStream,
-  ],
-  () => {
-    if (props.annotateScreenStream && props.localStreamScreen) {
-      const videoTrack = props.localStreamScreen.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        const videoHeight = settings.height || 0;
-        const videoWidth = settings.width || 0;
-        cardWidth.value = videoWidth;
-        cardHeight.value = videoHeight;
-        const computedLeft = Math.floor((props.customWidth - videoWidth) / 2);
-        cardLeft.value = computedLeft;
-        canvasLeft.value = computedLeft < 0 ? computedLeft : 0;
-        return;
-      }
-    }
-
-    cardWidth.value = props.customWidth;
-    cardHeight.value = props.customHeight;
-    cardLeft.value = 0;
-    canvasLeft.value = 0;
-  },
-  { immediate: true },
-);
+  return getContainedContentRect(
+    props.customWidth,
+    props.customHeight,
+    width,
+    height
+  );
+});
 
 const panelBorder = computed(() =>
   props.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
@@ -197,7 +174,7 @@ const defaultContainerProps = computed<HTMLAttributes>(() => ({
     overflowX: 'hidden',
     overflowY: 'hidden',
     boxSizing: 'border-box',
-    left: cardLeft.value > 0 ? `${cardLeft.value}px` : 0,
+    left: 0,
     borderRadius: props.cellBorderRadius > 0 ? `${props.cellBorderRadius}px` : '0px',
   } satisfies CSSProperties,
 }));
@@ -218,10 +195,10 @@ const defaultScreenboardContainerProps = computed<HTMLAttributes>(() => ({
   class: 'modern-flexible-video__screenboard',
   style: {
     position: 'absolute',
-    top: 0,
-    left: `${canvasLeft.value}px`,
-    width: `${cardWidth.value}px`,
-    height: `${cardHeight.value}px`,
+    top: `${screenContentRect.value.top}px`,
+    left: `${screenContentRect.value.left}px`,
+    width: `${screenContentRect.value.width}px`,
+    height: `${screenContentRect.value.height}px`,
     backgroundColor: 'rgba(0, 0, 0, 0.005)',
     zIndex: 2,
     pointerEvents: 'none',
@@ -256,17 +233,17 @@ const getCellBgColor = (hasContent: boolean): string => {
 
 const getCellStyle = (hasContent: boolean): CSSProperties => ({
   flex: 1,
-  width: `${cardWidth.value}px`,
-  height: `${cardHeight.value}px`,
-  minWidth: `${cardWidth.value}px`,
-  minHeight: `${cardHeight.value}px`,
-  maxWidth: `${cardWidth.value}px`,
-  maxHeight: `${cardHeight.value}px`,
+  width: `${props.customWidth}px`,
+  height: `${props.customHeight}px`,
+  minWidth: `${props.customWidth}px`,
+  minHeight: `${props.customHeight}px`,
+  maxWidth: `${props.customWidth}px`,
+  maxHeight: `${props.customHeight}px`,
   backgroundColor: getCellBgColor(hasContent),
   margin: '1px',
   padding: 0,
   borderRadius: props.cellBorderRadius > 0 ? `${props.cellBorderRadius}px` : '0px',
-  left: `${cardLeft.value}px`,
+  left: 0,
   overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',

@@ -71,9 +71,7 @@
 
 <script setup lang="ts">
 import {
-  ref,
   computed,
-  watch,
   defineComponent,
   h,
   isVNode,
@@ -85,6 +83,7 @@ import {
   type VNodeChild,
 } from 'vue';
 import type { RenderableComponent } from '../../types/renderable-component';
+import { getContainedContentRect } from '../screenboardComponents/canvasCoordinates';
 
 /**
  * Options passed to renderCell function
@@ -254,11 +253,6 @@ const props = withDefaults(defineProps<FlexibleVideoProps>(), {
   renderScreenboard: undefined,
 });
 
-const cardWidth = ref(0);
-const cardHeight = ref(0);
-const cardLeft = ref(0);
-const canvasLeft = ref(0);
-
 const slots = useSlots();
 
 // Wrapper component for flexible VNodeChild rendering
@@ -296,37 +290,19 @@ function joinClassNames(...classes: (string | string[] | undefined)[]): string |
   return filtered.length > 0 ? filtered : undefined;
 }
 
-// Watch for dimension and stream changes
-watch(
-  [
-    () => props.customWidth,
-    () => props.customHeight,
-    () => props.localStreamScreen,
-    () => props.annotateScreenStream,
-  ],
-  () => {
-    if (props.annotateScreenStream && props.localStreamScreen) {
-      const localStream = props.localStreamScreen;
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        const videoHeight = settings.height || 0;
-        const videoWidth = settings.width || 0;
-        cardWidth.value = videoWidth;
-        cardHeight.value = videoHeight;
-        const computedLeft = Math.floor((props.customWidth - videoWidth) / 2);
-        cardLeft.value = computedLeft;
-        canvasLeft.value = computedLeft < 0 ? computedLeft : 0;
-      }
-    } else {
-      cardWidth.value = props.customWidth;
-      cardHeight.value = props.customHeight;
-      cardLeft.value = 0;
-      canvasLeft.value = 0;
-    }
-  },
-  { immediate: true }
-);
+const screenContentRect = computed(() => {
+  const videoTrack = props.annotateScreenStream
+    ? props.localStreamScreen?.getVideoTracks()[0]
+    : undefined;
+  const { width = 0, height = 0 } = videoTrack?.getSettings() ?? {};
+
+  return getContainedContentRect(
+    props.customWidth,
+    props.customHeight,
+    width,
+    height
+  );
+});
 
 // =========================
 // Container Props Merging
@@ -361,7 +337,7 @@ const containerStyle = computed(() => {
     overflowX: 'hidden' as const,
     overflowY: 'hidden' as const,
     boxSizing: 'border-box',
-    left: cardLeft.value > 0 ? `${cardLeft.value}px` : 0,
+    left: 0,
     ...(typeof props.containerProps?.style === 'object' ? props.containerProps.style : {}),
   } as CSSProperties;
 });
@@ -401,8 +377,8 @@ const cellClassNames = computed(() =>
 );
 
 const cellStyle = computed(() => {
-  const widthPx = `${cardWidth.value}px`;
-  const heightPx = `${cardHeight.value}px`;
+  const widthPx = `${props.customWidth}px`;
+  const heightPx = `${props.customHeight}px`;
 
   return {
     flex: 1,
@@ -418,6 +394,8 @@ const cellStyle = computed(() => {
     padding: 0,
     borderRadius: '0px',
     boxSizing: 'border-box',
+    position: 'relative',
+    left: 0,
     ...(typeof props.cellProps?.style === 'object' ? props.cellProps.style : {}),
   } as CSSProperties;
 });
@@ -506,13 +484,14 @@ const screenboardClassNames = computed(() =>
 );
 
 const screenboardStyle = computed(() => {
-  const widthPx = `${cardWidth.value}px`;
-  const heightPx = `${cardHeight.value}px`;
+  const rect = screenContentRect.value;
+  const widthPx = `${rect.width}px`;
+  const heightPx = `${rect.height}px`;
 
   return {
     position: 'absolute' as const,
-    top: 0,
-    left: `${canvasLeft.value}px`,
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
     width: widthPx,
     minWidth: widthPx,
     maxWidth: widthPx,

@@ -227,7 +227,7 @@ import { getDemoCloudConfig } from './utils/demoCloudConfig'
 // Example:
 /*
 const credentials = {};
-const localLink = 'http://your-ce-server.com'; //http://localhost:3000
+const localLink = 'https://your-mediasfu-server.example.com';
 const connectMediaSFU = localLink.trim() !== '';
 */
 
@@ -239,7 +239,7 @@ const credentials = {
   apiUserName: 'dummyUsr',
   apiKey: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 };
-const localLink = 'http://your-ce-server.com'; //http://localhost:3000
+const localLink = 'https://your-mediasfu-server.example.com';
 const connectMediaSFU = localLink.trim() !== '';
 */
 
@@ -744,4 +744,3 @@ const CustomMiniCard: Component = {
   ====== END OF GUIDE ======
   ========================
 -->
-

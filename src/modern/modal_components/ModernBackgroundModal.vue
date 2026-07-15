@@ -35,9 +35,12 @@ import {
 } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
+import SelfieSegmentationModule from '@mediapipe/selfie_segmentation';
+import type { SelfieSegmentation as SelfieSegmentationInstance } from '@mediapipe/selfie_segmentation';
 import type { BackgroundModalProps, BackgroundModalPosition } from '../../types/background';
 import { mergeAttrObjects, mergeStyleObjects } from '../display_components/styleUtils';
+
+const { SelfieSegmentation } = SelfieSegmentationModule;
 
 const props = withDefaults(defineProps<BackgroundModalProps>(), {
   renderMode: 'modal',
@@ -100,7 +103,7 @@ const panelGradientBackground =
 const customImage = ref('');
 const selectedImage = ref('');
 const segmentVideo = ref<MediaStream | null>(null);
-const selfieSegmentation = shallowRef<SelfieSegmentation | null>(null);
+const selfieSegmentation = shallowRef<SelfieSegmentationInstance | null>(null);
 const pauseSegmentation = ref(false);
 const processedStream = ref<MediaStream | null>(null);
 const keepBackground = ref(false);

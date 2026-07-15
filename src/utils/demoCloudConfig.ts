@@ -7,11 +7,10 @@ export interface DemoCloudConfig {
   connectMediaSFU: boolean
 }
 
-// Publish-safe defaults. Use scripts/configure-mediasfu-defaults.mjs
-// to temporarily swap in staging or other local test values when needed.
-export const DEMO_MEDIASFU_API_USERNAME = 'your-api-username';
-export const DEMO_MEDIASFU_API_KEY = 'your-api-key';
-export const DEMO_CONNECT_MEDIA_SFU = false;
+// Publish-safe defaults for demos. Never place real cloud credentials here.
+export const DEMO_MEDIASFU_API_USERNAME = 'your-api-username'
+export const DEMO_MEDIASFU_API_KEY = 'your-api-key'
+export const DEMO_CONNECT_MEDIA_SFU = false
 
 type RuntimeEnv = Record<string, string | undefined>
 type DemoRuntimeGlobal = typeof globalThis & {

@@ -149,8 +149,11 @@ import { computed, defineComponent, defineOptions, h, isVNode, nextTick, onMount
 import type { CSSProperties, PropType, VNodeChild } from 'vue'
 import { faTimes } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation'
+import SelfieSegmentationModule from '@mediapipe/selfie_segmentation'
+import type { SelfieSegmentation as SelfieSegmentationInstance } from '@mediapipe/selfie_segmentation'
 import type { BackgroundModalProps } from '../../types/background'
+
+const { SelfieSegmentation } = SelfieSegmentationModule
 
 interface SegmentationResults {
   segmentationMask: HTMLCanvasElement | HTMLVideoElement | HTMLImageElement | ImageBitmap
@@ -199,7 +202,7 @@ defineOptions({
 const customImage = ref(props.parameters.customImage ?? '')
 const selectedImage = ref(props.parameters.selectedImage ?? '')
 const segmentVideo = ref<MediaStream | null>(props.parameters.segmentVideo ?? null)
-const selfieSegmentation = shallowRef<SelfieSegmentation | null>(props.parameters.selfieSegmentation ?? null)
+const selfieSegmentation = shallowRef<SelfieSegmentationInstance | null>(props.parameters.selfieSegmentation ?? null)
 const pauseSegmentation = ref(props.parameters.pauseSegmentation ?? false)
 const processedStream = ref<MediaStream | null>(props.parameters.processedStream ?? null)
 const keepBackground = ref(props.parameters.keepBackground ?? false)
