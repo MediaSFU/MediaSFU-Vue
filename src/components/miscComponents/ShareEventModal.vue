@@ -118,7 +118,7 @@ import type { FontAwesomeIconProps } from '@fortawesome/vue-fontawesome';
 import MeetingIdComponent from '../menuComponents/MeetingIDComponent.vue';
 import MeetingPasscodeComponent from '../menuComponents/MeetingPasscodeComponent.vue';
 import ShareButtonsComponent from '../menuComponents/ShareButtonsComponent.vue';
-import type { EventType } from '../../../../SharedTypes';
+import type { EventType } from '../../SharedTypes';
 import type { MeetingIdComponentProps } from '../menuComponents/MeetingIDComponent.vue';
 import type { MeetingPasscodeComponentProps } from '../menuComponents/MeetingPasscodeComponent.vue';
 import type { ShareButtonsComponentProps } from '../menuComponents/ShareButtonsComponent.vue';

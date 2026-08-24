@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
 import ParticipantListOthersItem from './ParticipantListOthersItem.vue';
-import type { Participant } from '../../../../SharedTypes';
+import type { Participant } from '../../SharedTypes';
 
 /**
  * Props for the ParticipantListOthers component

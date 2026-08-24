@@ -3,8 +3,6 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client", "node"],
-    "ignoreDeprecations": "6.0",
-
     /* Skip type checking for external libraries to prevent React/Vue type conflicts */
     "skipLibCheck": true,
 

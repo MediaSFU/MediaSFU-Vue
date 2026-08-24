@@ -193,6 +193,7 @@ export interface ConfirmExitModalProps {
   islevel: string;
   title?: VNodeChild;
   confirmLabel?: VNodeChild;
+  leaveLabel?: VNodeChild;
   cancelLabel?: VNodeChild;
   message?: VNodeChild | ((context: { islevel: string }) => VNodeChild);
   overlayProps?: HTMLAttributes;
@@ -206,6 +207,7 @@ export interface ConfirmExitModalProps {
   messageProps?: HTMLAttributes;
   footerProps?: HTMLAttributes;
   cancelButtonProps?: ButtonHTMLAttributes;
+  leaveButtonProps?: ButtonHTMLAttributes;
   confirmButtonProps?: ButtonHTMLAttributes;
   bodyDividerProps?: HTMLAttributes;
   renderHeader?: (options: {
@@ -220,6 +222,7 @@ export interface ConfirmExitModalProps {
   renderFooter?: (options: {
     defaultFooter: VNodeChild;
     onCancel: () => void;
+    onLeave: () => void;
     onConfirm: () => void;
   }) => VNodeChild;
   renderHeaderDivider?: (options: { defaultDivider: VNodeChild }) => VNodeChild;
@@ -237,6 +240,7 @@ const props = withDefaults(defineProps<ConfirmExitModalProps>(), {
   exitEventOnConfirm: confirmExit,
   title: undefined,
   confirmLabel: undefined,
+  leaveLabel: undefined,
   cancelLabel: 'Cancel',
   message: undefined,
   overlayProps: undefined,
@@ -250,6 +254,7 @@ const props = withDefaults(defineProps<ConfirmExitModalProps>(), {
   messageProps: undefined,
   footerProps: undefined,
   cancelButtonProps: undefined,
+  leaveButtonProps: undefined,
   confirmButtonProps: undefined,
   bodyDividerProps: undefined,
   renderHeader: undefined,
@@ -282,11 +287,18 @@ const RenderVNode = defineComponent({
 });
 
 // Default labels and message
+const isHostExit = computed(() => props.islevel === '2' && !props.ban);
+
 const defaultConfirmLabel = computed(() => {
   const confirmLabel = props.confirmLabel as unknown;
   return confirmLabel === false || confirmLabel == null
-    ? (props.islevel === '2' ? 'End Meeting' : 'Leave')
+    ? (isHostExit.value ? 'End for everyone' : 'Leave')
     : props.confirmLabel;
+});
+
+const defaultLeaveLabel = computed(() => {
+  const leaveLabel = props.leaveLabel as unknown;
+  return leaveLabel === false || leaveLabel == null ? 'Leave room' : props.leaveLabel;
 });
 
 const defaultCancelLabel = computed(() => {
@@ -304,8 +316,8 @@ const resolvedMessage = computed(() => {
   if (message !== false && message != null) {
     return props.message;
   }
-  return props.islevel === '2'
-    ? 'Are you sure you want to end the meeting for everyone?'
+  return isHostExit.value
+    ? 'Leave room keeps the meeting active for everyone else and lets you rejoin. End for everyone closes it for all participants.'
     : 'Are you sure you want to leave the meeting?';
 });
 
@@ -602,6 +614,31 @@ const handleCancelClick = (event: MouseEvent) => {
 };
 
 // Confirm button props
+const leaveButtonAttrs = computed(() => {
+  const leaveButtonProps = props.leaveButtonProps || {};
+  const { class: cls, style, onClick, ...rest } = leaveButtonProps as Record<string, unknown>;
+  return {
+    className: cls as string | undefined,
+    style: style as CSSProperties | undefined,
+    onClick: onClick as ((event: MouseEvent) => void) | undefined,
+    rest,
+  };
+});
+
+const leaveButtonClassNames = computed(() =>
+  joinClassNames('mediasfu-confirm-exit__leave', leaveButtonAttrs.value.className)
+);
+
+const leaveButtonStyle = computed<CSSProperties>(() => ({
+  borderRadius: '6px',
+  backgroundColor: '#475569',
+  color: 'white',
+  padding: '6px 14px',
+  border: 'none',
+  cursor: 'pointer',
+  ...leaveButtonAttrs.value.style,
+}));
+
 const confirmButtonAttrs = computed(() => {
   const confirmButtonProps = props.confirmButtonProps || {};
   const { class: cls, style, onClick, ...rest } = confirmButtonProps as Record<string, unknown>;
@@ -627,14 +664,20 @@ const confirmButtonStyle = computed<CSSProperties>(() => ({
   ...confirmButtonAttrs.value.style,
 }));
 
-const handleConfirmExit = () => {
+const handleConfirmExit = (endRoomOnHostExit = true) => {
   props.exitEventOnConfirm({
     socket: props.socket,
     member: props.member,
     roomName: props.roomName,
     ban: props.ban,
+    endRoomOnHostExit,
   });
   props.onConfirmExitClose();
+};
+
+const handleLeaveClick = (event: MouseEvent) => {
+  leaveButtonAttrs.value.onClick?.(event);
+  if (!event.defaultPrevented) handleConfirmExit(false);
 };
 
 const handleConfirmClick = (event: MouseEvent) => {
@@ -644,13 +687,13 @@ const handleConfirmClick = (event: MouseEvent) => {
   if (event.defaultPrevented) {
     return;
   }
-  handleConfirmExit();
+  handleConfirmExit(true);
 };
 
 const resolvedTitle = computed(() => {
   const title = props.title as unknown;
   return title === false || title == null
-    ? (props.islevel === '2' ? 'End Meeting' : 'Leave Meeting')
+    ? (isHostExit.value ? 'Leave or end meeting' : 'Leave Meeting')
     : props.title;
 });
 
@@ -677,6 +720,17 @@ const defaultHeader = computed(() =>
         'button',
         {
           type: 'button',
+          onClick: handleLeaveClick,
+          class: leaveButtonClassNames.value,
+          style: leaveButtonStyle.value,
+          ...leaveButtonAttrs.value.rest,
+        },
+        isVNode(defaultLeaveLabel.value) ? defaultLeaveLabel.value : String(defaultLeaveLabel.value)
+      ),
+      h(
+        'button',
+        {
+          type: 'button',
           onClick: handleCloseClick,
           class: closeButtonClassNames.value,
           style: closeButtonStyle.value,
@@ -685,7 +739,7 @@ const defaultHeader = computed(() =>
         },
         [defaultCloseIcon.value]
       ),
-    ]
+    ].filter((_, index) => index !== 1 || isHostExit.value)
   )
 );
 
@@ -784,7 +838,8 @@ const footerNode = computed(() => {
     return props.renderFooter({
       defaultFooter: defaultFooter.value,
       onCancel: props.onConfirmExitClose,
-      onConfirm: handleConfirmExit,
+      onLeave: () => handleConfirmExit(false),
+      onConfirm: () => handleConfirmExit(true),
     });
   }
   return defaultFooter.value;

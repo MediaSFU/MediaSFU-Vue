@@ -22,7 +22,6 @@ import PreJoinPage from './components/miscComponents/PreJoinPage.vue';
 import VideoCard from './components/displayComponents/VideoCard.vue';
 import AudioCard from './components/displayComponents/AudioCard.vue';
 import MiniCard from './components/displayComponents/MiniCard.vue';
-import MainContainerComponent from './components/displayComponents/MainContainerComponent.vue';
 import Pagination from './components/displayComponents/Pagination.vue';
 import AlertComponent from './components/displayComponents/AlertComponent.vue';
 import MenuModal from './components/menuComponents/MenuModal.vue';

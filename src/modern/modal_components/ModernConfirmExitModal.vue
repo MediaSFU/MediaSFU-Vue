@@ -147,13 +147,27 @@ const defaultConfirmButtonProps: ButtonHTMLAttributes = {
   },
 };
 
+const defaultLeaveButtonProps: ButtonHTMLAttributes = {
+  style: {
+    flex: 1,
+    minHeight: '46px',
+    borderRadius: '9999px',
+    border: '1px solid var(--ms-modern-panel-border)',
+    background: 'var(--ms-modern-field-background)',
+    color: 'var(--ms-modern-text-primary)',
+    fontFamily: 'var(--ms-modern-font-family)',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+};
+
 const renderModernHeader = (options: {
   defaultHeader: VNodeChild;
   title: VNodeChild;
   onClose: () => void;
 }) => {
   const resolvedTitle = props.title === false || props.title == null
-    ? (props.islevel === '2' ? 'End Meeting' : 'Leave Meeting')
+    ? (props.islevel === '2' && !props.ban ? 'Leave or end meeting' : 'Leave Meeting')
     : props.title;
   const defaultHeader = h('div', { class: 'ms-modern-confirm-exit__header' }, [
     h('h2', { class: 'ms-modern-confirm-exit__title' }, [
@@ -199,6 +213,7 @@ const mergedProps = computed(() => ({
   messageProps: mergeAttrObjects(defaultMessageProps, props.messageProps),
   footerProps: mergeAttrObjects(defaultFooterProps, props.footerProps),
   cancelButtonProps: mergeAttrObjects(defaultCancelButtonProps, props.cancelButtonProps),
+  leaveButtonProps: mergeAttrObjects(defaultLeaveButtonProps, props.leaveButtonProps),
   confirmButtonProps: mergeAttrObjects(defaultConfirmButtonProps, props.confirmButtonProps),
   bodyDividerProps: mergeAttrObjects(defaultDividerProps, props.bodyDividerProps),
   renderHeader: renderModernHeader,

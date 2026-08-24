@@ -326,7 +326,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, type CSSProperties } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faLock, faPaperPlane, faReply, faUser, faUserFriends, faUsers } from '@fortawesome/free-solid-svg-icons';
 import type { SendMessageOptions } from 'mediasfu-shared';
@@ -336,7 +336,7 @@ import type {
   Message,
   Participant,
   ShowAlert,
-} from '../../../../SharedTypes';
+} from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
 
 export interface MessagePanelProps {
@@ -411,7 +411,7 @@ const emptyStateIcon = computed(() => (props.type === 'direct' ? faUser : faUser
 
 const canSend = computed(() => messageText.value.trim().length > 0);
 
-const styles = {
+const styles: Record<string, CSSProperties> = {
   panel: {
     display: 'flex',
     flexDirection: 'column',

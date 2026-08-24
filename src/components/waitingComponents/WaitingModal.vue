@@ -221,7 +221,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { respondToWaiting } from 'mediasfu-shared';
-import type { WaitingRoomParticipant } from '../../../../SharedTypes';
+import type { WaitingRoomParticipant } from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
 
 // Helper function to join class names

@@ -417,7 +417,7 @@ const warningTextStyle = computed<CSSProperties>(() => ({
 const spinnerIconStyle = computed<CSSProperties>(() => ({
   fontSize: '1.2rem',
   color: 'inherit',
-  ...(((props.spinnerIconProps as Partial<FontAwesomeIconProps> | undefined)?.style as CSSProperties) ?? {}),
+  ...(props.spinnerIconProps?.style ?? {}),
 }));
 
 const showSpinner = computed(

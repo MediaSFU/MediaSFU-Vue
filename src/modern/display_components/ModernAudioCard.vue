@@ -309,7 +309,7 @@ onUnmounted(() => {
 
 const toggleAudio = async () => {
   if (!props.participant?.muted && props.controlUserMedia) {
-    const updatedParams = props.parameters.getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await props.controlUserMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,
@@ -328,7 +328,7 @@ const toggleAudio = async () => {
 
 const toggleVideo = async () => {
   if (props.participant?.videoOn && props.controlUserMedia) {
-    const updatedParams = props.parameters.getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await props.controlUserMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,

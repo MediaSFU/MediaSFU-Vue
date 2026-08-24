@@ -156,10 +156,14 @@
     <component
       :is="MainContainer"
       v-else-if="returnUI"
+      :container-width-fraction="containerWidthFraction"
+      :container-height-fraction="containerHeightFraction"
     >
       <!-- Main aspect component contains all but the control buttons -->
       <component
         :is="MainAspect"
+        :container-width-fraction="containerWidthFraction"
+        :container-height-fraction="containerHeightFraction"
         :background-color="roomSurfaceBackgroundColor"
         :default-fraction="1 - controlHeight"
         :update-is-wide-screen="updateIsWideScreen"
@@ -171,13 +175,14 @@
         <!-- MainScreenComponent contains the main grid view and the minor grid view -->
         <component
           :is="MainScreen"
+          :container-width-fraction="containerWidthFraction"
+          :container-height-fraction="containerHeightFraction"
           :do-stack="true"
           :main-size="mainHeightWidth"
           :update-component-sizes="updateComponentSizes"
           :default-fraction="1 - controlHeight"
           :component-sizes="componentSizes"
           :show-controls="eventType === 'webinar' || eventType === 'conference'"
-          :container-width-fraction="mainScreenWidthFraction"
         >
           <!-- MainGridComponent shows the main grid view -->
           <component
@@ -1256,6 +1261,12 @@ export interface MediasfuGenericOptions {
    * @default createRoomOnMediaSFU
    */
   createMediaSFURoom?: CreateRoomOnMediaSFUType;
+
+  /** Fraction of the browser viewport represented by the embedding container. */
+  containerWidthFraction?: number;
+
+  /** Fraction of the browser viewport represented by the embedding container. */
+  containerHeightFraction?: number;
   
   /**
    * Custom VideoCard component (legacy prop, prefer uiOverrides.videoCard)
@@ -1371,6 +1382,8 @@ const props = withDefaults(defineProps<MediasfuGenericOptions>(), {
   noUIPreJoinOptions: undefined,
   joinMediaSFURoom: undefined,
   createMediaSFURoom: undefined,
+  containerWidthFraction: 1,
+  containerHeightFraction: 1,
   customVideoCard: undefined,
   customAudioCard: undefined,
   customMiniCard: undefined,
@@ -1383,6 +1396,18 @@ const props = withDefaults(defineProps<MediasfuGenericOptions>(), {
   uiOverrides: undefined,
   userVoiceClones: undefined,
 });
+
+/**
+ * Emitted whenever the media graph changes — new/lost streams, a local track
+ * toggling, screen share starting, consumers changing. Reasons are coalesced
+ * into one microtask-deferred emit per tick.
+ *
+ * The reliable way for a :returnUI="false" surface to re-read media without
+ * polling.
+ */
+const emit = defineEmits<{
+  (e: 'mediaChanged', info: { reasons: string[]; parameters: any }): void;
+}>();
 
 const reportedUnsupportedCustomKeys = new Set<string>();
 
@@ -1507,8 +1532,10 @@ const addVideosGridOverride = resolveFunction('addVideosGrid', addVideosGrid);
 const validated = ref<boolean>(props.useLocalUIMode);
 
 // Socket references
-const socket = ref<MediaSFUSocket>({} as MediaSFUSocket);
-const localSocket = ref<MediaSFUSocket | null>(null);
+// Socket.io clients carry private state. Keep them shallow so Vue does not
+// unwrap that state into an object that is no longer assignable to Socket.
+const socket = shallowRef<MediaSFUSocket>({} as MediaSFUSocket);
+const localSocket = shallowRef<MediaSFUSocket | null>(null);
 const roomData = ref<ResponseJoinRoom | null>(null);
 const device = ref<Device | null>(null);
 
@@ -1556,7 +1583,7 @@ const participantsCounter = ref<number>(0);
 const participantsFilter = ref<string>('');
 
 // Media and room details
-const consume_sockets = ref<ConsumeSocket[]>([]);
+const consume_sockets = shallowRef<ConsumeSocket[]>([]);
 const rtpCapabilities = ref<RtpCapabilities | null>(null);
 const roomRecvIPs = ref<string[]>([]);
 const meetingRoomParams = ref<MeetingRoomParams | null>(null);
@@ -2356,7 +2383,7 @@ const chatSetting = ref<string>('allow');
 
 // Display settings
 const displayOption = ref<string>(meetingDisplayType.value ? meetingDisplayType.value : 'media');
-const autoWave = ref<boolean>(true);
+const autoWave = ref<boolean>(props.returnUI !== false);
 const forceFullDisplay = ref<boolean>(
   eventType.value === 'webinar' || eventType.value === 'conference' ? false : true
 );
@@ -2798,10 +2825,10 @@ const participantsActive = ref<boolean>(false);
 
 // Computed Properties
 const computedContainerStyle = computed(() => ({
-  height: '100vh',
-  width: '100vw',
-  maxWidth: '100vw',
-  maxHeight: '100vh',
+  height: props.containerHeightFraction < 1 ? '100%' : '100vh',
+  width: props.containerWidthFraction < 1 ? '100%' : '100vw',
+  maxWidth: props.containerWidthFraction < 1 ? '100%' : '100vw',
+  maxHeight: props.containerHeightFraction < 1 ? '100%' : '100vh',
   overflow: 'hidden',
   ...props.containerStyle,
   ...sidebarThemeVars.value,
@@ -3868,6 +3895,28 @@ const updateDirectMessageDetails = (value: Participant | null) => {
   directMessageDetails.value = value;
 };
 
+/**
+ * Coalesced media-change notifier. Several updaters fire in the same tick
+ * during a single transition, so reasons are batched into one
+ * microtask-deferred emit rather than delivered N times.
+ */
+const pendingMediaReasons = new Set<string>();
+let mediaNotifyQueued = false;
+const notifyMediaChanged = (reason: string) => {
+  pendingMediaReasons.add(reason);
+  if (mediaNotifyQueued) return;
+  mediaNotifyQueued = true;
+  Promise.resolve().then(() => {
+    mediaNotifyQueued = false;
+    const reasons = Array.from(pendingMediaReasons);
+    pendingMediaReasons.clear();
+    try {
+      emit('mediaChanged', { reasons, parameters: getCurrentParams() });
+    } catch {
+      // A consumer's observer must never break the media path.
+    }
+  });
+};
 const showAlert = ({
   message,
   type,
@@ -3877,6 +3926,23 @@ const showAlert = ({
   type: string;
   duration?: number;
 }) => {
+  // Alerts are the SDK's only signal for a refused or failed control, so a
+  // headless consumer (:returnUI="false") must receive them deterministically.
+  // Reactive state alone never publishes; the fields are passed explicitly
+  // here because the assignments below have not run yet.
+  try {
+    if (props.sourceParameters !== null && props.updateSourceParameters) {
+      publishSourceParameters({
+        ...getAllParams(),
+        ...mediaSFUFunctions(),
+        alertMessage: message,
+        alertType: type,
+        alertVisible: true,
+      });
+    }
+  } catch {
+    // Publishing must never block the alert itself.
+  }
   const normalizedType: 'success' | 'danger' = type === 'danger' ? 'danger' : 'success';
   alertMessage.value = message;
   alertType.value = normalizedType;
@@ -3928,6 +3994,27 @@ const checkOrientation = () => {
   return isPortrait ? 'portrait' : 'landscape';
 };
 
+/** Publish after the current Vue render, coalesced to the latest bag. */
+let pendingSourceParameters: Record<string, unknown> | null = null;
+let sourcePublishQueued = false;
+let sourcePublishActive = true;
+const publishSourceParameters = (bag: Record<string, unknown>) => {
+  if (!props.updateSourceParameters) return;
+  pendingSourceParameters = bag;
+  if (sourcePublishQueued) return;
+  sourcePublishQueued = true;
+  Promise.resolve().then(() => {
+    sourcePublishQueued = false;
+    const next = pendingSourceParameters;
+    pendingSourceParameters = null;
+    if (!sourcePublishActive || !next || !props.updateSourceParameters) return;
+    try {
+      props.updateSourceParameters(next);
+    } catch {
+      // A consumer observer must never break the room.
+    }
+  });
+};
 const getUpdatedAllParams = () => {
   // Get all the params for the room as well as the update functions for them and Media SFU functions and return them
   try {
@@ -3937,7 +4024,7 @@ const getUpdatedAllParams = () => {
         ...mediaSFUFunctions(),
       };
       if (props.updateSourceParameters) {
-        props.updateSourceParameters(updatedParams);
+        publishSourceParameters(updatedParams);
       }
     }
   } catch {
@@ -4043,6 +4130,7 @@ const mediaSFUFunctions = () => {
     requestPermissionAudio,
     getMediaDevicesList,
     getParticipantMedia,
+    getCurrentParams,
   };
 };
 
@@ -4054,6 +4142,14 @@ const requestPermissionAudio = async () => {
   return 'granted';
 };
 
+const getCurrentParams = () => {
+  // Same value as getUpdatedAllParams(), without the republish side effect.
+  // Safe to call from a render, an event handler, or a polling loop.
+  return {
+    ...getAllParams(),
+    ...mediaSFUFunctions(),
+  };
+};
 const getAllParams = () => {
   // Get all the params for the room as well as the update functions for them and return them
   return {
@@ -4535,7 +4631,7 @@ const getAllParams = () => {
     updateLandScaped: (value: boolean) => (landScaped.value = value),
     updateLock_screen: (value: boolean) => (lock_screen.value = value),
     updateScreenId: (value: string) => (screenId.value = value),
-    updateAllVideoStreams: (value: (Participant | Stream)[]) => (allVideoStreams.value = value),
+    updateAllVideoStreams: (value: (Participant | Stream)[]) =>  { allVideoStreams.value = value; notifyMediaChanged('video-streams'); },
     updateNewLimitedStreams: (value: (Participant | Stream)[]) => (newLimitedStreams.value = value),
     updateNewLimitedStreamsIDs: (value: string[]) => (newLimitedStreamsIDs.value = value),
     updateActiveSounds: (value: string[]) => (activeSounds.value = value),
@@ -4554,7 +4650,7 @@ const getAllParams = () => {
     updateVideoRequestState: (value: string | null) => (videoRequestState.value = value),
     updateVideoRequestTime: (value: number) => (videoRequestTime.value = value),
     updateVideoAction: (value: boolean) => (videoAction.value = value),
-    updateLocalStreamVideo: (value: MediaStream | null) => (localStreamVideo.value = value),
+    updateLocalStreamVideo: (value: MediaStream | null) =>  { localStreamVideo.value = value; notifyMediaChanged('local-video'); },
     updateUserDefaultVideoInputDevice: (value: string) => (userDefaultVideoInputDevice.value = value),
     updateCurrentFacingMode: (value: string) => (currentFacingMode.value = value),
     updatePrevFacingMode: (value: string) => (prevFacingMode.value = value),
@@ -4580,11 +4676,11 @@ const getAllParams = () => {
     updateOldSoundIds: (value: string[]) => (oldSoundIds.value = value),
     updatehostLabel: (value: string) => (hostLabel.value = value),
     updateMainScreenFilled: (value: boolean) => (mainScreenFilled.value = value),
-    updateLocalStreamScreen: (value: MediaStream | null) => (localStreamScreen.value = value),
+    updateLocalStreamScreen: (value: MediaStream | null) =>  { localStreamScreen.value = value; notifyMediaChanged('screen-share'); },
     updateScreenAlreadyOn: (value: boolean) => (screenAlreadyOn.value = value),
     updateChatAlreadyOn: (value: boolean) => (chatAlreadyOn.value = value),
     updateRedirectURL: (value: string) => (redirectURL.value = value),
-    updateOldAllStreams: (value: (Participant | Stream)[]) => (oldAllStreams.value = value),
+    updateOldAllStreams: (value: (Participant | Stream)[]) =>  { oldAllStreams.value = value; notifyMediaChanged('video-streams'); },
     updateAdminVidID: (value: string) => (adminVidID.value = value),
     updateStreamNames: (value: Stream[]) => (streamNames.value = value),
     updateNon_alVideoStreams: (value: Participant[]) => (non_alVideoStreams.value = value),
@@ -4593,7 +4689,7 @@ const getAllParams = () => {
     updateMixed_alVideoStreams: (value: (Participant | Stream)[]) => (mixed_alVideoStreams.value = value),
     updateNon_alVideoStreams_muted: (value: Participant[]) => (non_alVideoStreams_muted.value = value),
     updatePaginatedStreams: (value: (Participant | Stream)[][]) => (paginatedStreams.value = value),
-    updateLocalStreamAudio: (value: MediaStream | null) => (localStreamAudio.value = value),
+    updateLocalStreamAudio: (value: MediaStream | null) =>  { localStreamAudio.value = value; notifyMediaChanged('local-audio'); },
     updateDefAudioID: (value: string) => (defAudioID.value = value),
     updateUserDefaultAudioInputDevice: (value: string) => (userDefaultAudioInputDevice.value = value),
     updateUserDefaultAudioOutputDevice: (value: string) => (userDefaultAudioOutputDevice.value = value),
@@ -4635,7 +4731,7 @@ const getAllParams = () => {
     updateShowMiniView: (value: boolean) => (showMiniView.value = value),
     updateNStream: (value: MediaStream | null) => (nStream.value = value),
     updateDefer_receive: (value: boolean) => (defer_receive.value = value),
-    updateAllAudioStreams: (value: (Participant | Stream)[]) => (allAudioStreams.value = value),
+    updateAllAudioStreams: (value: (Participant | Stream)[]) =>  { allAudioStreams.value = value; notifyMediaChanged('audio-streams'); },
     updateRemoteScreenStream: (value: Stream[]) => (remoteScreenStream.value = value),
     updateScreenProducer: (value: Producer | null) => (screenProducer.value = value),
     updateLocalScreenProducer: (value: Producer | null) => (localScreenProducer.value = value),
@@ -4658,6 +4754,7 @@ const getAllParams = () => {
       audioOnlyStreams.value = Array.isArray(value)
         ? prepareRenderableList(value as RenderableListSource)
         : emptyRenderableList();
+      notifyMediaChanged('audio-streams');
     },
     updateTranslationStreams: (value: RenderableListSource | null | undefined) => {
       translationStreams.value = Array.isArray(value)
@@ -4830,7 +4927,7 @@ const getAllParams = () => {
     updateAudioProducer: (value: Producer | null) => (audioProducer.value = value),
     updateAudioLevel: (value: number) => (audioLevel.value = value),
     updateLocalAudioProducer: (value: Producer | null) => (localAudioProducer.value = value),
-    updateConsumerTransports: (value: TransportType[]) => (consumerTransports.value = value),
+    updateConsumerTransports: (value: TransportType[]) =>  { consumerTransports.value = value; notifyMediaChanged('consumers'); },
     updateConsumingTransports: (value: string[]) => (consumingTransports.value = value),
     updatePolls: (value: Poll[]) => (polls.value = value),
     updatePoll: (value: Poll | null) => (poll.value = value),
@@ -4933,50 +5030,60 @@ const getMediaDevicesList = async (kind: 'videoinput' | 'audioinput') => {
   }
 };
 
-const getParticipantMedia = async (id: string = '', name: string, kind: string = 'video') => {
-  // Get the media stream of a participant by id or name
+const getParticipantMedia = async (
+  idOrOptions: string | { id?: string; name?: string; kind?: 'video' | 'audio' } = '',
+  nameArg = '',
+  kindArg: 'video' | 'audio' = 'video',
+): Promise<MediaStream | null> => {
+  // Resolve a participant's media stream by participant id, participant name,
+  // or a producer id. Accepts both the positional (id, name, kind) form and
+  // the documented object form so every MediaSFU component behaves the same.
   try {
-    let stream = null;
+    const options =
+      typeof idOrOptions === 'object' && idOrOptions !== null
+        ? idOrOptions
+        : { id: idOrOptions, name: nameArg, kind: kindArg };
+    const id = options.id || '';
+    const name = options.name || '';
+    const kind = options.kind || 'video';
 
-    if (id && id !== '') {
-      if (kind === 'video') {
-        const videoStreamObj = (allVideoStreams.value as (Participant | Stream)[]).find(
-          (obj) => 'producerId' in obj && obj.producerId === id
-        );
-        if (videoStreamObj && 'stream' in videoStreamObj) {
-          stream = videoStreamObj.stream;
-        }
-      } else if (kind === 'audio') {
-        const audioStreamObj = (allAudioStreams.value as (Participant | Stream)[]).find(
-          (obj) => 'producerId' in obj && obj.producerId === id
-        );
-        if (audioStreamObj && 'stream' in audioStreamObj) {
-          stream = audioStreamObj.stream;
-        }
-      }
-    } else if (name && name !== '') {
-      const participant = participants.value.find((part: Participant) => part.name === name);
-      if (participant) {
-        const participantId = participant.id;
-        if (kind === 'video') {
-          const videoStreamObj = (allVideoStreams.value as (Participant | Stream)[]).find(
-            (obj) => 'producerId' in obj && obj.producerId === participantId
-          );
-          if (videoStreamObj && 'stream' in videoStreamObj) {
-            stream = videoStreamObj.stream;
-          }
-        } else if (kind === 'audio') {
-          const audioStreamObj = (allAudioStreams.value as (Participant | Stream)[]).find(
-            (obj) => 'producerId' in obj && obj.producerId === participantId
-          );
-          if (audioStreamObj && 'stream' in audioStreamObj) {
-            stream = audioStreamObj.stream;
-          }
-        }
-      }
+    const participantsRef = participants.value || [];
+    const streams = (
+      kind === 'video' ? allVideoStreams.value : allAudioStreams.value
+    ) as (Participant | Stream)[] | undefined;
+    if (!streams || streams.length === 0) return null;
+
+    let participant = id
+      ? participantsRef.find((part: Participant) => part.id === id)
+      : undefined;
+    if (!participant && name) {
+      participant = participantsRef.find((part: Participant) => part.name === name);
     }
 
-    return stream;
+    // allVideoStreams / allAudioStreams are keyed by producerId only. A
+    // participant's `id` is its membership id and never matches, so the
+    // producer reference has to come from videoID / audioID.
+    const producerId = participant
+      ? kind === 'video'
+        ? participant.videoID
+        : participant.audioID
+      : '';
+    if (producerId) {
+      const match = streams.find(
+        (stream: Participant | Stream) => stream.producerId === producerId,
+      );
+      if (match && match.stream) return match.stream;
+    }
+
+    // A caller that already holds a producer id may pass it directly as `id`.
+    if (id) {
+      const direct = streams.find(
+        (stream: Participant | Stream) => stream.producerId === id,
+      );
+      if (direct && direct.stream) return direct.stream;
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -5055,8 +5162,8 @@ const applyComponentSizes = (defaultFraction: number) => {
   }
 
   const { mainHeight, otherHeight, mainWidth, otherWidth } = computeDimensionsMethod({
-    containerWidthFraction: mainScreenWidthFraction.value,
-    containerHeightFraction: 1,
+    containerWidthFraction: props.containerWidthFraction,
+    containerHeightFraction: props.containerHeightFraction,
     mainSize: eventType.value === 'chat' ? 0 : eventType.value === 'broadcast' ? 100 : nextMainHeightWidth,
     doStack: true,
     defaultFraction,
@@ -5085,13 +5192,13 @@ const handleResize = async () => {
   windowHeight.value = window.innerHeight;
 
   if (eventType.value === 'webinar' || eventType.value === 'conference') {
-    const currentHeight = window.innerHeight;
+    const currentHeight = window.innerHeight * props.containerHeightFraction;
     fraction = Number((40 / currentHeight).toFixed(3));
     if (fraction !== controlHeight.value) {
       controlHeight.value = fraction;
     }
   } else {
-    const currentHeight = window.innerHeight;
+    const currentHeight = window.innerHeight * props.containerHeightFraction;
     fraction = Number((40 / currentHeight).toFixed(3));
     if (fraction !== controlHeight.value) {
       controlHeight.value = fraction;
@@ -6841,7 +6948,7 @@ async function closeAndReset() {
 
   try {
     if (props.updateSourceParameters) {
-      props.updateSourceParameters(allParameters.value);
+      publishSourceParameters(allParameters.value);
     }
   } catch {
     console.log('error updateSourceParameters during reset');
@@ -7780,6 +7887,8 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  sourcePublishActive = false;
+  pendingSourceParameters = null;
   // Remove event listeners
   window.removeEventListener('resize', onResize);
   window.removeEventListener('orientationchange', onResize);

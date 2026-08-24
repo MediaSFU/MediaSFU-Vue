@@ -1,4 +1,4 @@
-import type { Producer, ProducerOptions, RtpCapabilities, Transport } from "mediasoup-client";
+import type { Device, types as MediasoupClientTypes } from "mediasoup-client";
 import type {
   AParamsType,
   CoHostResponsibility,
@@ -26,9 +26,14 @@ import type {
   ComponentSizes,
   Transport as TransportType,
 } from "../../@types/types";
-import type { Device } from "mediasoup-client";
 import type { Socket } from "socket.io-client";
 import type { SelfieSegmentation } from "@mediapipe/selfie_segmentation";
+import type { VNodeChild } from "vue";
+
+type Producer = MediasoupClientTypes.Producer;
+type ProducerOptions = MediasoupClientTypes.ProducerOptions;
+type RtpCapabilities = MediasoupClientTypes.RtpCapabilities;
+type Transport = MediasoupClientTypes.Transport;
 
 export interface InitialValuesStateType {
   roomName: string;
@@ -234,9 +239,9 @@ export interface InitialValuesStateType {
   paginationDirection: string;
   gridSizes: GridSizes;
   screenForceFullDisplay: boolean;
-  mainGridStream: React.JSX.Element[];
-  otherGridStreams: React.JSX.Element[][];
-  audioOnlyStreams: React.JSX.Element[];
+  mainGridStream: VNodeChild[];
+  otherGridStreams: VNodeChild[][];
+  audioOnlyStreams: VNodeChild[];
   videoInputs: MediaDeviceInfo[];
   audioInputs: MediaDeviceInfo[];
   meetingProgressTime: string;
@@ -796,8 +801,6 @@ export const initialValuesState: InitialValuesStateType = {
   menuActive: false,
   commentsActive: false,
 };
-
-
 
 
 

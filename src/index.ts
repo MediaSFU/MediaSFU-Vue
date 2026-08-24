@@ -12,6 +12,33 @@ export * from './types/renderable-component';
 export * from './utils/mediasfuRooms';
 export * from './utils/translationLanguages';
 
+// Room lifecycle operations. These named exports let applications wire an
+// authorized session without reaching into package-internal paths.
+export {
+  allMembers,
+  clickAudio,
+  clickScreenShare,
+  clickVideo,
+  confirmExit,
+  createDeviceClient,
+  launchConfirmExit,
+  processConsumerTransports,
+} from 'mediasfu-shared';
+export type {
+  AllMembersOptions,
+  ClickAudioOptions,
+  ClickScreenShareOptions,
+  ClickVideoOptions,
+  ConfirmExitOptions,
+  CreateDeviceClientOptions,
+  LaunchConfirmExitOptions,
+  ProcessConsumerTransportsOptions,
+} from 'mediasfu-shared';
+export {
+  joinRoomClient,
+  type JoinRoomClientOptions,
+} from './ProducerClient/producerClientEmits/joinRoomClient';
+
 // Services - Socket receive helpers and framework-level integrations
 export * from './services/translationReceiveMethods';
 export * from './services/liveSubtitleService';
@@ -74,3 +101,8 @@ export { useMediasfu } from './composables/useMediasfu';
 export { useMediasfuDemo } from './composables/useMediasfuDemo';
 export { useMenuModal } from './composables/useMenuModal';
 export { useUIOverrides } from './composables/useUIOverrides';
+
+// Headless composition composable — the Vue equivalent of the React SDK
+// hook, with matching field names so the guide's recipes transfer.
+export { useMediasfuHeadless, default as useMediasfuHeadlessDefault } from './composables/useMediasfuHeadless';
+export type { MediasfuHeadless } from './composables/useMediasfuHeadless';

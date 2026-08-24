@@ -100,7 +100,7 @@
 import { computed } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faCircle } from '@fortawesome/free-solid-svg-icons';
-import type { Participant } from '../../../../SharedTypes';
+import type { Participant } from '../../SharedTypes';
 
 /**
  * Props for the ParticipantListOthersItem component

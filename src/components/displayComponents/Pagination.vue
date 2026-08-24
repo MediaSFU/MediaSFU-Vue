@@ -82,15 +82,16 @@ import { faStar, faLock } from '@fortawesome/free-solid-svg-icons';
 import {
   generatePageContent,
   type GeneratePageContentOptions,
+  type GeneratePageContentParameters,
 } from 'mediasfu-shared';
 import type { Socket } from 'socket.io-client';
-import type { ShowAlert, BreakoutParticipant } from '../../../../SharedTypes';
+import type { ShowAlert, BreakoutParticipant } from '../../SharedTypes';
 
 /**
  * Parameters object for Pagination component
  * @interface PaginationParameters
  */
-export interface PaginationParameters {
+export interface PaginationParameters extends GeneratePageContentParameters {
   /** Number of main rooms/pages */
   mainRoomsLength: number;
   /** Current user's room/page number */
@@ -115,10 +116,12 @@ export interface PaginationParameters {
   socket: Socket;
   /** Function to get updated parameters */
   getUpdatedAllParams: () => PaginationParameters;
-  /** Additional parameters */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  getCurrentParams?: () => any;
+  /** Optional modern theme state */
+  isDarkModeValue?: boolean;
 }
+
+export type PaginationPageChangeOptions = GeneratePageContentOptions<PaginationParameters>;
 
 /**
  * Options passed to renderContainer function
@@ -201,7 +204,7 @@ export interface PaginationProps {
    * Custom handler for page changes
    * @default generatePageContent
    */
-  handlePageChange?: (options: GeneratePageContentOptions) => Promise<void>;
+  handlePageChange?: (options: PaginationPageChangeOptions) => Promise<void>;
   
   /**
    * Horizontal position of pagination controls
@@ -350,7 +353,7 @@ const pages = computed(() => Array.from({ length: props.totalPages + 1 }, (_, in
 
 const getLatestParameters = (): PaginationParameters => {
   try {
-    return props.parameters.getUpdatedAllParams?.() ?? props.parameters;
+    return props.parameters.getCurrentParams?.() ?? props.parameters;
   } catch {
     return props.parameters;
   }

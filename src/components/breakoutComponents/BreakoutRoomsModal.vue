@@ -123,7 +123,7 @@ import { handleStartBreakout } from 'mediasfu-shared';
 import { handleStopBreakout } from 'mediasfu-shared';
 import type { Participant, BreakoutParticipant } from 'mediasfu-shared';
 
-export type ShowAlert = (alert: { message: string; type: 'success' | 'danger'; duration?: number }) => void;
+export type ShowAlert = (alert: { message: string; type: 'success' | 'danger' | 'info'; duration?: number }) => void;
 
 /**
  * Parameters interface for BreakoutRoomsModal

@@ -193,6 +193,7 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type InputHTMLAttributes,
+  type VNodeProps,
 } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
@@ -221,6 +222,10 @@ export interface PermissionsModalParameters {
   getUpdatedAllParams?: () => PermissionsModalParameters;
   [key: string]: unknown;
 }
+
+const toMergeableVNodeProps = (
+  attributes: HTMLAttributes | ButtonHTMLAttributes | InputHTMLAttributes,
+): Record<string, unknown> & VNodeProps => Object.fromEntries(Object.entries(attributes));
 
 export interface PermissionsModalProps {
   isPermissionsModalVisible: boolean;
@@ -353,7 +358,7 @@ const mergedOverlayProps = computed(() =>
         zIndex: 1050,
       } satisfies CSSProperties,
     },
-    props.overlayProps ?? {}
+    toMergeableVNodeProps(props.overlayProps ?? {})
   )
 );
 
@@ -374,21 +379,21 @@ const mergedContentProps = computed(() =>
         ...positionStyle.value,
       } satisfies CSSProperties,
     },
-    props.contentProps ?? {}
+    toMergeableVNodeProps(props.contentProps ?? {})
   )
 );
 
 const mergedHeaderProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__header' },
-    props.headerProps ?? {}
+    toMergeableVNodeProps(props.headerProps ?? {})
   )
 );
 
 const mergedTitleProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__title' },
-    props.titleProps ?? {}
+    toMergeableVNodeProps(props.titleProps ?? {})
   )
 );
 
@@ -398,42 +403,42 @@ const mergedCloseButtonProps = computed(() =>
       class: 'ms-permissions-modal__close-button',
       type: 'button',
     },
-    props.closeButtonProps ?? {}
+    toMergeableVNodeProps(props.closeButtonProps ?? {})
   )
 );
 
 const mergedBodyProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__body' },
-    props.bodyProps ?? {}
+    toMergeableVNodeProps(props.bodyProps ?? {})
   )
 );
 
 const mergedTabListProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__tab-list' },
-    props.tabListProps ?? {}
+    toMergeableVNodeProps(props.tabListProps ?? {})
   )
 );
 
 const mergedConfigSectionProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__config-section' },
-    props.configSectionProps ?? {}
+    toMergeableVNodeProps(props.configSectionProps ?? {})
   )
 );
 
 const mergedUsersSectionProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__users-section' },
-    props.usersSectionProps ?? {}
+    toMergeableVNodeProps(props.usersSectionProps ?? {})
   )
 );
 
 const mergedSearchInputProps = computed(() =>
   mergeProps(
     { class: 'ms-permissions-modal__search-input' },
-    props.searchInputProps ?? {}
+    toMergeableVNodeProps(props.searchInputProps ?? {})
   )
 );
 
@@ -559,7 +564,7 @@ const resolveTabButtonProps = (tab: 'config' | 'users') =>
       'data-active': activeTab.value === tab,
       type: 'button',
     },
-    props.tabButtonProps ?? {}
+    toMergeableVNodeProps(props.tabButtonProps ?? {})
   );
 
 const resolveActionButtonProps = (
@@ -577,9 +582,11 @@ const resolveActionButtonProps = (
       type: 'button',
       disabled,
     },
-    variant === 'primary'
-      ? props.actionButtonProps ?? {}
-      : props.secondaryActionButtonProps ?? {}
+    toMergeableVNodeProps(
+      variant === 'primary'
+        ? props.actionButtonProps ?? {}
+        : props.secondaryActionButtonProps ?? {}
+    )
   );
 
 const resolveLevelButtonProps = (participant: Participant, level: PermissionLevel) => {

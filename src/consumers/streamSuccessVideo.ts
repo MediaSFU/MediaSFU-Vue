@@ -1,4 +1,4 @@
-import type { Device, Producer, ProducerOptions, RtpCodecCapability } from 'mediasoup-client/lib/types';
+import type { types as MediasoupClientTypes } from 'mediasoup-client';
 import type { Socket } from 'socket.io-client';
 import type {
   ConnectSendTransportVideoParameters,
@@ -13,6 +13,11 @@ import type {
   HParamsType,
   VParamsType,
 } from 'mediasfu-shared';
+
+type Device = MediasoupClientTypes.Device;
+type Producer = MediasoupClientTypes.Producer;
+type ProducerOptions = MediasoupClientTypes.ProducerOptions;
+type RtpCodecCapability = MediasoupClientTypes.RtpCodecCapability;
 
 export interface StreamSuccessVideoParameters
   extends CreateSendTransportParameters,
@@ -142,18 +147,28 @@ export const streamSuccessVideo: StreamSuccessVideoType = async ({
     localStreamVideo = stream;
     updateLocalStreamVideo(localStreamVideo);
 
+    const videoTrack = localStreamVideo.getVideoTracks()[0];
+    if (!videoTrack) {
+      showAlert?.({
+        message: 'The selected stream does not contain a video track.',
+        type: 'danger',
+        duration: 3000,
+      });
+      return;
+    }
+
     if (localStream == null) {
-      localStream = new MediaStream([localStreamVideo.getVideoTracks()[0]]);
+      localStream = new MediaStream([videoTrack]);
       updateLocalStream(localStream);
     } else {
       localStream.getVideoTracks().forEach((track) => {
         localStream?.removeTrack(track);
       });
-      localStream.addTrack(localStreamVideo.getVideoTracks()[0]);
+      localStream.addTrack(videoTrack);
       updateLocalStream(localStream);
     }
 
-    const videoTracked = localStream.getVideoTracks()[0];
+    const videoTracked = videoTrack;
     defVideoID = videoTracked.getSettings().deviceId || '';
     userDefaultVideoInputDevice = defVideoID;
     currentFacingMode = videoTracked.getSettings().facingMode || 'user';

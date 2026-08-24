@@ -1,3 +1,8 @@
 export * from '../SharedTypes';
-export * from '../types/custom-renderers';
-export * from 'mediasfu-shared';
+export type {
+  CustomAudioCardType,
+  CustomComponentType,
+  CustomMiniCardType,
+  CustomPreJoinPageType,
+  CustomVideoCardType,
+} from '../types/custom-renderers';

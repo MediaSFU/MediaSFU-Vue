@@ -86,7 +86,7 @@
 import { ref, computed, watch, defineOptions, onUnmounted, defineComponent, h, isVNode, type PropType, type VNodeChild, type HTMLAttributes, type StyleValue } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import type { Producer } from 'mediasoup-client';
+import type { types as MediasoupClientTypes } from 'mediasoup-client';
 import type {
   ConnectSendTransportScreenType,
   CreateSendTransportType,
@@ -100,6 +100,8 @@ import type {
   PrepopulateUserMediaParameters,
   StopShareScreenParameters,
 } from 'mediasfu-shared';
+
+type Producer = MediasoupClientTypes.Producer;
 
 /**
  * Parameters interface for ScreenboardModal

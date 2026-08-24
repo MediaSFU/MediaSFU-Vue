@@ -139,12 +139,12 @@ const connectionPresets = {
   },
   hybrid: {
     credentials: { apiUserName: 'your_api_username', apiKey: 'your_api_key' },
-    localLink: 'http://localhost:3000',
+    localLink: 'https://your-mediasfu-server.example.com',
     connectMediaSFU: true,
   },
   ce: {
     credentials: undefined,
-    localLink: 'http://localhost:3000',
+    localLink: 'https://your-mediasfu-server.example.com',
     connectMediaSFU: false,
   },
 };
@@ -364,7 +364,7 @@ Each experience accepts the same prop surface listed at the top of the README (â
 | Build documentation (`docs/`) | `npm run build-docs` |
 | Lint source | `npm run lint` |
 
-Before publishing (`npm publish` or `pnpm publish`), run `npm run prepublishOnly` which chains the library build and TypeDoc generation.
+`npm publish` runs the production library build through `prepack`. Run `npm run build-docs` separately when refreshing the hosted API documentation.
 
 ---
 

@@ -33,7 +33,6 @@ import {
   faDesktop,
   faLock,
   faMicrophone,
-  faTimes,
   faVideo,
 } from '@fortawesome/free-solid-svg-icons';
 import ClassicEventSettingsModal from '../../components/eventSettingsComponents/EventSettingsModal.vue';

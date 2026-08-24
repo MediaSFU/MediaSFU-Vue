@@ -12,7 +12,6 @@ import {
   ref,
   type ButtonHTMLAttributes,
   type CSSProperties,
-  type HTMLAttributes,
   type PropType,
   type VNodeChild,
 } from 'vue';

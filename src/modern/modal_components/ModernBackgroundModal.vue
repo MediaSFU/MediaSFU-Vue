@@ -82,7 +82,7 @@ const RenderVNode = defineComponent({
   name: 'RenderVNode',
   props: {
     node: {
-      type: [Object, String, Number, Boolean, Array, Function] as PropType<VNodeChild>,
+      type: [Object, String, Number, Boolean, Array, Function] as PropType<VNodeChild | (() => VNodeChild)>,
       default: null,
     },
   },
@@ -881,7 +881,7 @@ const saveBackground = async (): Promise<{ expectedTrackId?: string; requiresAsy
         message: 'Please pause the recording before changing the background.',
         type: 'danger',
       });
-      return;
+      return { requiresAsyncPublish: false };
     }
 
     let videoParams = parameters.videoParams ?? {};

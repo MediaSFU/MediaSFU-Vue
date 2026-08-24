@@ -1,7 +1,9 @@
-import type { ShowAlert, VidCons } from '../../../../SharedTypes'
-import type { Producer } from 'mediasoup-client'
+import type { ShowAlert, VidCons } from '../../SharedTypes'
+import type { types as MediasoupClientTypes } from 'mediasoup-client'
 import type { SelfieSegmentation } from '@mediapipe/selfie_segmentation'
 import type { Ref, VNodeChild, HTMLAttributes, ButtonHTMLAttributes, LabelHTMLAttributes, InputHTMLAttributes, CanvasHTMLAttributes, VideoHTMLAttributes } from 'vue'
+
+type Producer = MediasoupClientTypes.Producer
 
 export type BackgroundModalPosition = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
 
@@ -17,6 +19,7 @@ export interface BackgroundModalParameters {
   backgroundHasChanged?: boolean
   virtualStream?: MediaStream | null
   mainCanvas?: HTMLCanvasElement | null
+  updateMainCanvas?: (canvas: HTMLCanvasElement | null) => void
   prevKeepBackground?: boolean
   appliedBackground?: boolean
   autoClickBackground?: boolean

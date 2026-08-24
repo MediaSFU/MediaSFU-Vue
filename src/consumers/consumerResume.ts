@@ -4,8 +4,10 @@ import TranslationAudioPlayer from '../methods/utils/TranslationAudioPlayer/Tran
 import type { RenderableComponent } from '../types/renderable-component';
 import type { PrepopulateUserMediaType, PrepopulateUserMediaParameters } from './prepopulateUserMedia';
 import type { Participant, Stream, EventType } from 'mediasfu-shared';
-import type { Consumer } from 'mediasoup-client';
+import type { types as MediasoupClientTypes } from 'mediasoup-client';
 import type { Socket } from 'socket.io-client';
+
+type Consumer = MediasoupClientTypes.Consumer;
 
 type ReorderStreamsOptions = {
   add?: boolean;

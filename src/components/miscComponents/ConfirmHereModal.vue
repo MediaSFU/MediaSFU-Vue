@@ -180,7 +180,7 @@ export interface ConfirmHereModalProps {
   containerProps?: HTMLAttributes;
   spinnerWrapperProps?: HTMLAttributes;
   spinnerIcon?: VNodeChild;
-  spinnerIconProps?: Partial<FontAwesomeIconProps>;
+  spinnerIconProps?: Partial<FontAwesomeIconProps> & { style?: CSSProperties };
   titleProps?: HTMLAttributes;
   messageProps?: HTMLAttributes;
   countdownWrapperProps?: HTMLAttributes;

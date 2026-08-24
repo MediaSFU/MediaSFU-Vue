@@ -242,7 +242,7 @@ import type {
   RemoveParticipantsType,
   ShowAlert,
   CoHostResponsibility,
-} from '../../../../SharedTypes';
+} from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
 
 /**

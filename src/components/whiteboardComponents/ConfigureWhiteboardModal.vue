@@ -207,7 +207,7 @@ export interface WhiteboardUpdatedData {
   status: string;
 }
 
-export type ShowAlert = (alert: { message: string; type: 'success' | 'danger'; duration?: number }) => void;
+export type ShowAlert = (alert: { message: string; type: 'success' | 'danger' | 'info'; duration?: number }) => void;
 
 export interface OnScreenChangesOptions {
   changed: boolean;

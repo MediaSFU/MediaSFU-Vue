@@ -109,7 +109,7 @@ import {
   type HTMLAttributes,
   type VideoHTMLAttributes,
 } from 'vue';
-import type { EventType } from '../../../../SharedTypes';
+import type { EventType } from '../../SharedTypes';
 
 /**
  * Props for the CardVideoDisplay component

@@ -19,8 +19,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount, nextTick, type CSSProperties, type Component } from 'vue';
 import MiniAudio from '../../../components/displayComponents/MiniAudio.vue';
-import type { Consumer } from 'mediasoup-client';
-import type { BreakoutParticipant, Participant } from '../../../../../SharedTypes';
+import type { types as MediasoupClientTypes } from 'mediasoup-client';
+import type { BreakoutParticipant, Participant } from '../../../SharedTypes';
+
+type Consumer = MediasoupClientTypes.Consumer;
 
 interface SpeakerTranslationState {
   enabled?: boolean;

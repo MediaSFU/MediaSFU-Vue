@@ -23,12 +23,10 @@ import ClassicAlertComponent from '../../components/displayComponents/AlertCompo
 import type { AlertComponentProps } from '../../components/displayComponents/AlertComponent.vue';
 import { mergeAttrObjects } from './styleUtils';
 
+export type ModernAlertComponentProps = AlertComponentProps;
+
 const props = defineProps<AlertComponentProps>();
 const slots = useSlots();
-
-const accentColor = computed(() =>
-  props.type === 'danger' ? 'var(--ms-modern-danger)' : 'var(--ms-modern-success)',
-);
 
 const alertTone = computed(() =>
   props.type === 'danger'

@@ -136,7 +136,6 @@ const props = withDefaults(defineProps<ModernVideoCardProps>(), {
   videoInfoComponent: undefined,
   videoControlsComponent: undefined,
   backgroundColor: undefined,
-  audioDecibels: undefined,
   containerProps: () => ({}),
   infoOverlayProps: () => ({}),
   controlsOverlayProps: () => ({}),
@@ -228,7 +227,9 @@ const updateSpeakingState = () => {
 
   const existingEntry = latestAudioDecibels?.find((entry) => entry.name === props.name);
   const participantEntry = latestParticipants?.find((participant) => participant.name === props.name);
-  const fallbackAverageLoudness = props.audioDecibels?.averageLoudness ?? 0;
+  const fallbackAverageLoudness = props.audioDecibels?.find(
+    (entry) => entry.name === props.name,
+  )?.averageLoudness ?? 0;
   const shouldShowWaveform = Boolean(
     participantEntry
       ? existingEntry && existingEntry.averageLoudness > 127.5 && !participantEntry.muted
@@ -244,7 +245,7 @@ const updateSpeakingState = () => {
 
 const toggleAudio = async () => {
   if (!props.participant?.muted) {
-    const updatedParams = props.parameters.getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,
@@ -263,7 +264,7 @@ const toggleAudio = async () => {
 
 const toggleVideo = async () => {
   if (props.participant?.videoOn) {
-    const updatedParams = props.parameters.getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,

@@ -83,10 +83,10 @@
 import { ref } from 'vue';
 import {
   handleWelcomeRequest,
-  validateAlphanumeric,
+  validateWelcomeAlphanumeric,
   validateWelcomeInputs,
 } from 'mediasfu-shared';
-import type { WelcomePageParameters } from '../../../../SharedTypes';
+import type { WelcomePageParameters } from '../../SharedTypes';
 import { ModernButton, ModernField } from '../primitives';
 import ModernEntryShell from './ModernEntryShell.vue';
 import type { ModernEntryShellLayout } from './ModernEntryShell.vue';
@@ -107,21 +107,21 @@ const link = ref('');
 
 const handleNameChange = (e: Event) => {
   const text = (e.target as HTMLInputElement).value;
-  if (text.length <= 12 && validateAlphanumeric(text)) {
+  if (text.length <= 12 && validateWelcomeAlphanumeric(text)) {
     name.value = text;
   }
 };
 
 const handleSecretChange = (e: Event) => {
   const text = (e.target as HTMLInputElement).value;
-  if (text.length <= 64 && validateAlphanumeric(text)) {
+  if (text.length <= 64 && validateWelcomeAlphanumeric(text)) {
     secret.value = text;
   }
 };
 
 const handleEventIDChange = (e: Event) => {
   const text = (e.target as HTMLInputElement).value;
-  if (text.length <= 32 && validateAlphanumeric(text)) {
+  if (text.length <= 32 && validateWelcomeAlphanumeric(text)) {
     eventID.value = text;
   }
 };

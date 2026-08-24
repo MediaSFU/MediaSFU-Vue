@@ -130,7 +130,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import StandardPanelComponent from './StandardPanelComponent.vue'
 import AdvancedPanelComponent from './AdvancedPanelComponent.vue'
-import type { EventType } from '../../../../SharedTypes'
+import type { EventType } from '../../SharedTypes'
 import type {
   ConfirmRecordingType,
   ConfirmRecordingParameters

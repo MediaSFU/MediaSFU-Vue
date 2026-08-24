@@ -21,13 +21,13 @@ import {
   useSlots,
   watch,
   type ButtonHTMLAttributes,
-  type CSSProperties,
   type HTMLAttributes,
   type LabelHTMLAttributes,
   type SelectHTMLAttributes,
   type VNodeChild,
 } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { faCamera, faCheck, faMicrophone, faPhotoFilm, faSyncAlt, faVideo } from '@fortawesome/free-solid-svg-icons';
 import { switchAudio, switchVideo, switchVideoAlt } from 'mediasfu-shared';
 import ClassicMediaSettingsModal from '../../components/mediaSettingsComponents/MediaSettingsModal.vue';
@@ -320,7 +320,7 @@ const renderModernHeader = (options: { defaultHeader: VNodeChild; onClose: () =>
 const renderTabButton = (
   section: MediaSettingsSection,
   label: string,
-  icon: unknown,
+  icon: IconDefinition,
 ) =>
   h(
     'button',
@@ -346,7 +346,7 @@ const renderActionButton = ({
 }: {
   label: string;
   description: string;
-  icon: unknown;
+  icon: IconDefinition;
   variant: 'primary' | 'secondary';
   onClick: () => void;
 }) =>
@@ -378,7 +378,7 @@ const renderDeviceSection = ({
   description: string;
   emptyTitle: string;
   emptyDescription: string;
-  icon: unknown;
+  icon: IconDefinition;
   inputs: MediaDeviceInfo[];
   selectedId: string;
   fallback: string;

@@ -219,7 +219,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import RenderRequestComponent from './RenderRequestComponent.vue';
 import { respondToRequests } from 'mediasfu-shared';
-import type { Request } from '../../../../SharedTypes';
+import type { Request } from '../../SharedTypes';
 import type { MediaSFUSocket } from '../../types/socket';
 import type { Component } from 'vue';
 

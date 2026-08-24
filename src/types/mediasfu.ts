@@ -53,7 +53,7 @@ export interface MediasfuGenericProps {
 export interface MediaAlert {
   id: number;
   message: string;
-  type: 'success' | 'danger';
+  type: 'success' | 'danger' | 'info';
 }
 
 export interface MediaSessionState {

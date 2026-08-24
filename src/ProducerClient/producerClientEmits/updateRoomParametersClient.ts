@@ -28,8 +28,10 @@ import { screenParams as screen_Params } from "mediasfu-shared";
 import type { ScreenParamsType } from "mediasfu-shared";
 import { aParams as audio_Params } from "mediasfu-shared";
 import type { AParamsType } from "mediasfu-shared";
-import type { RtpCapabilities } from "mediasoup-client";
+import type { types as MediasoupClientTypes } from "mediasoup-client";
 import type { MeetingRoomParams, VidCons, ShowAlert, ResponseJoinRoom, EventType } from "../../@types/types";
+
+type RtpCapabilities = MediasoupClientTypes.RtpCapabilities;
 
 export interface UpdateRoomParametersClientParameters {
   rtpCapabilities: RtpCapabilities | null;

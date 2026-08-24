@@ -255,7 +255,6 @@ import MiniCard from './MiniCard.vue';
 import {
   getOverlayPosition,
   controlMedia,
-  type ControlMediaOptions,
 } from 'mediasfu-shared';
 import type {
   ControlsPosition,
@@ -264,8 +263,10 @@ import type {
   AudioDecibels,
   CoHostResponsibility,
   ShowAlert,
-} from '../../../../SharedTypes';
+} from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
+
+type ControlUserMediaOptions = Parameters<typeof controlMedia>[0];
 
 /**
  * Parameters object for AudioCard control operations
@@ -294,6 +295,7 @@ export interface AudioCardParameters {
   eventType: string;
   /** Function to get the latest parameters */
   getUpdatedAllParams(): AudioCardParameters;
+  getCurrentParams?: () => any;
 }
 
 type MiniCardComponentProps = InstanceType<typeof MiniCard>['$props'];
@@ -359,7 +361,7 @@ export interface AudioCardProps {
    * Custom function for controlling participant media (mute/unmute)
    * @default controlMedia
    */
-  controlUserMedia?: (options: ControlMediaOptions) => Promise<void>;
+  controlUserMedia?: (options: ControlUserMediaOptions) => Promise<void>;
   
   /**
    * Custom CSS styles for the card container
@@ -652,7 +654,7 @@ const props = withDefaults(defineProps<AudioCardProps>(), {
 
 const DEFAULT_WAVEFORM_DURATIONS = [474, 433, 407, 458, 400, 427, 441, 419, 487];
 
-const latestParametersSnapshot = ref(props.parameters.getUpdatedAllParams());
+const latestParametersSnapshot = ref((props.parameters.getCurrentParams?.() ?? props.parameters));
 
 const latestSubtitleParams = computed(() =>
   props.parameters?.getUpdatedAllParams?.() as {
@@ -676,7 +678,7 @@ const resolvedLiveSubtitleText = computed(() => {
   return liveSubtitle?.text ?? props.liveSubtitleText ?? '';
 });
 
-const getLatestParameters = () => props.parameters.getUpdatedAllParams();
+const getLatestParameters = () => (props.parameters.getCurrentParams?.() ?? props.parameters);
 
 const durations = computed(() =>
   props.waveformDurations && props.waveformDurations.length > 0

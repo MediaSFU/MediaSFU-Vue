@@ -151,7 +151,7 @@ import type {
   PreJoinPageParameters,
   ResponseLocalConnection,
   ResponseLocalConnectionData,
-} from '../../../../SharedTypes';
+} from '../../SharedTypes';
 import type {
   CreateRoomOnMediaSFUType,
   JoinRoomOnMediaSFUType,
@@ -327,7 +327,8 @@ const onCreateRoom = async () => {
   let payload = {} as CreateMediaSFURoomOptions;
 
   if (effectiveReturnUI.value) {
-    if (!name.value || !duration.value || !eventType.value || !capacity.value) {
+    const selectedEventType = eventType.value;
+    if (!name.value || !duration.value || !selectedEventType || selectedEventType === 'none' || !capacity.value) {
       error.value = 'Please fill all the fields.';
       pending.value = false;
       return;
@@ -336,12 +337,12 @@ const onCreateRoom = async () => {
       action: 'create',
       duration: parseInt(duration.value),
       capacity: parseInt(capacity.value),
-      eventType: eventType.value as 'chat' | 'broadcast' | 'webinar' | 'conference',
+      eventType: selectedEventType,
       userName: name.value,
       recordOnly: false,
     };
 
-    props.parameters.updateEventType?.(payload.eventType);
+    props.parameters.updateEventType?.(selectedEventType);
   } else {
     if (
       props.noUIPreJoinOptions &&

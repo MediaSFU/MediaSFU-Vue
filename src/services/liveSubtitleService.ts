@@ -2,7 +2,6 @@ import { computed, ref, type Ref } from 'vue';
 import {
   createLiveSubtitle as createSharedLiveSubtitle,
   getSubtitleForSpeaker as getSharedSubtitleForSpeaker,
-  isSubtitleExpired,
   pruneExpiredSubtitles,
   updateLiveSubtitlesFromTranscript,
 } from 'mediasfu-shared';

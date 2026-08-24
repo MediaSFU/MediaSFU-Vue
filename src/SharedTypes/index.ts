@@ -1,5 +1,13 @@
 import type { Socket } from 'socket.io-client';
-import type { Consumer, DtlsParameters, IceCandidate, IceParameters, ProducerCodecOptions, RtpCapabilities, RtpEncodingParameters } from 'mediasoup-client';
+import type { types as MediasoupClientTypes } from 'mediasoup-client';
+
+type Consumer = MediasoupClientTypes.Consumer;
+type DtlsParameters = MediasoupClientTypes.DtlsParameters;
+type IceCandidate = MediasoupClientTypes.IceCandidate;
+type IceParameters = MediasoupClientTypes.IceParameters;
+type ProducerCodecOptions = MediasoupClientTypes.ProducerCodecOptions;
+type RtpCapabilities = MediasoupClientTypes.RtpCapabilities;
+type RtpEncodingParameters = MediasoupClientTypes.RtpEncodingParameters;
 
 // Note: Types like ConnectSendTransportScreenType, PrepopulateUserMediaType, etc.
 // are defined in the Vue package's type system and imported where needed
@@ -83,7 +91,7 @@ export interface AudioDecibels {
   averageLoudness: number;
 }
 
-export type ShowAlert = (options: { message: string; type: 'success' | 'danger'; duration?: number }) => void;
+export type ShowAlert = (options: { message: string; type: 'success' | 'danger' | 'info'; duration?: number }) => void;
 
 export interface CoHostResponsibility {
   name: string;
@@ -753,4 +761,3 @@ export type RemoveParticipantsType = (options: any) => Promise<void>;
 
 // Consumer types - import from consumer-types file
 export * from './consumer-types';
-

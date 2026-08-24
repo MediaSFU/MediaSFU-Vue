@@ -234,7 +234,7 @@ import {
   handleEndPoll as handleEndPollUtil,
   handleVotePoll as handleVotePollUtil,
 } from 'mediasfu-shared';
-import type { Poll, ShowAlert } from '../../../SharedTypes';
+import type { Poll, ShowAlert } from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
 
 // Helper function

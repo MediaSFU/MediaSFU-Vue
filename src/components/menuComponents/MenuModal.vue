@@ -176,7 +176,7 @@ import MeetingIdComponent from './MeetingIDComponent.vue'
 import MeetingPasscodeComponent from './MeetingPasscodeComponent.vue'
 import ShareButtonsComponent from './ShareButtonsComponent.vue'
 import CustomButtons from './CustomButtons.vue'
-import type { EventType } from '../../../../SharedTypes'
+import type { EventType } from '../../SharedTypes'
 import type { CustomButton } from './CustomButtons.vue'
 
 /**
@@ -730,5 +730,4 @@ const overlayNode = computed(() => {
   }, [contentNode])
 })
 </script>
-
 

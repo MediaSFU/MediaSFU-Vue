@@ -157,7 +157,7 @@ defineOptions({
   name: 'RenderRequestComponent'
 });
 import type { MediaSFUSocket } from '../../types/socket';
-import type { Request } from '../../../../SharedTypes';
+import type { Request } from '../../SharedTypes';
 import type { RespondToRequestsType } from 'mediasfu-shared';
 
 /**

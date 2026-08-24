@@ -222,9 +222,10 @@ const renderActionsSection = () => {
     return null;
   }
 
-  const defaultCustomButtons = h(CustomButtons, { buttons: props.customButtons });
+  const customButtons = visibleButtons;
+  const defaultCustomButtons = h(CustomButtons, { buttons: customButtons });
   const actionsNode = props.renderCustomButtons
-    ? props.renderCustomButtons({ defaultCustomButtons, buttons: props.customButtons })
+    ? props.renderCustomButtons({ defaultCustomButtons, buttons: customButtons })
     : defaultCustomButtons;
 
   return h('section', { class: 'ms-modern-menu-modal__actions-card' }, [

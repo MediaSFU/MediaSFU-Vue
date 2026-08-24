@@ -31,6 +31,12 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type { PaginationParameters, PaginationProps } from '../../components/displayComponents/Pagination.vue';
 
+const styleObject = (style: unknown): CSSProperties => (
+  style !== null && typeof style === 'object' && !Array.isArray(style)
+    ? style as CSSProperties
+    : {}
+);
+
 export type ModernPaginationProps = PaginationProps & {
   isDarkMode?: boolean;
   enableGlassmorphism?: boolean;
@@ -76,7 +82,7 @@ const RenderVNode = defineComponent({
 
 const getLatestParameters = (): PaginationParameters => {
   try {
-    return props.parameters.getUpdatedAllParams?.() ?? props.parameters;
+    return props.parameters.getCurrentParams?.() ?? props.parameters;
   } catch {
     return props.parameters;
   }
@@ -332,8 +338,8 @@ const containerStyle = computed<CSSProperties>(() => ({
   opacity: isMounted.value ? 1 : 0,
   transform: isMounted.value ? 'translateY(0)' : 'translateY(10px)',
   transition: 'all 280ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-  ...(props.buttonsContainerStyle ?? {}),
-  ...(typeof props.containerProps?.style === 'object' ? props.containerProps.style : {}),
+  ...styleObject(props.buttonsContainerStyle),
+  ...styleObject(props.containerProps?.style),
 }));
 
 const arrowButtonStyle = (disabled: boolean): CSSProperties => ({
@@ -394,8 +400,8 @@ const getPageButtonStyle = (
       color: '#FFFFFF',
       boxShadow: '0 1px 3px rgba(0,0,0,0.22)',
       transform: 'scale(1.03)',
-      ...(props.activePageStyle ?? {}),
-      ...(typeof providedButtonStyle === 'object' ? providedButtonStyle : {}),
+      ...styleObject(props.activePageStyle),
+      ...styleObject(providedButtonStyle),
     };
   }
 
@@ -410,8 +416,8 @@ const getPageButtonStyle = (
         : 'rgba(0, 0, 0, 0.05)',
     color: resolvedIsDarkMode.value ? 'rgba(255, 255, 255, 0.9)' : 'rgba(15, 23, 42, 0.9)',
     transform: isHovered ? 'scale(1.01)' : 'scale(1)',
-    ...(props.inactivePageStyle ?? {}),
-    ...(typeof providedButtonStyle === 'object' ? providedButtonStyle : {}),
+    ...styleObject(props.inactivePageStyle),
+    ...styleObject(providedButtonStyle),
   };
 };
 
@@ -473,9 +479,9 @@ const renderPageButtonNode = (page: number): VNodeChild => {
           hoverIndex.value = null;
         }
       },
-      onClick: async (event: MouseEvent) => {
+      onClick: async (event: PointerEvent) => {
         if (customOnClick) {
-          await Promise.resolve(customOnClick(event as unknown as Event));
+          await Promise.resolve(customOnClick(event));
         }
 
         if (!event.defaultPrevented) {

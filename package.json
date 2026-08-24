@@ -1,7 +1,12 @@
 {
   "name": "mediasfu-vue",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "private": false,
+  "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "mediasfu-vue – Vue 3 WebRTC SDK for video conferencing, webinars, broadcasts, live streaming, chat, recording, whiteboard, and AI agents. Composition API, prebuilt rooms, and fully custom UIs.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -18,17 +23,18 @@
   "files": [
     "dist/",
     "src/",
-    "README.md"
+    "README.md",
+    "README_DETAILED.md"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "build:lib": "vite build --mode production && bash scripts/create-types.sh",
+    "check:embedded-container": "node scripts/check-embedded-container-contract.mjs",
+    "build:lib": "vite build --mode production && node scripts/create-types.mjs",
     "build-docs": "typedoc",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.vue",
     "lint:fix": "eslint . --ext .ts,.vue --fix",
-    "prepublishOnly": "npm run build:lib && npm run build-docs",
     "prepack": "npm run build:lib"
   },
   "keywords": [
@@ -74,7 +80,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MediaSFU/MediaSFU-Vue"
+    "url": "git+https://github.com/MediaSFU/MediaSFU-Vue.git"
   },
   "bugs": {
     "url": "https://github.com/MediaSFU/MediaSFU-Vue/issues",
@@ -92,9 +98,8 @@
     "vue": "^3.4.0 || ^3.5.0"
   },
   "dependencies": {
-    "@fortawesome/react-fontawesome": "^3.1.0",
     "bootstrap": "^5.3.8",
-    "mediasfu-shared": "^1.0.6",
+    "mediasfu-shared": "^1.1.0",
     "universal-cookie": "^8.0.1"
   },
   "devDependencies": {

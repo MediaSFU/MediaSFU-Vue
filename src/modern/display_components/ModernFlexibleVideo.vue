@@ -117,14 +117,6 @@ const panelBorder = computed(() =>
   props.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
 );
 
-const panelBackground = computed(() =>
-  props.enableGlassmorphism
-    ? props.isDarkMode
-      ? 'rgba(30, 30, 40, 0.6)'
-      : 'rgba(255, 255, 255, 0.6)'
-    : resolvedBackgroundColor.value
-);
-
 const resolvedBackgroundColor = computed(() => {
   const color = props.backgroundColor ?? 'transparent';
   if (color.includes('217, 227, 234') || color.includes('181, 233, 229')) {

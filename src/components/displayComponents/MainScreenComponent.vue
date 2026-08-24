@@ -117,7 +117,7 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted, onUnmounted, ref, h, useSlots, type VNodeChild, type HTMLAttributes } from 'vue';
-import type { ComponentSizes } from '../../../../SharedTypes';
+import type { ComponentSizes } from '../../SharedTypes';
 
 const joinClassNames = (...classes: (string | undefined | null)[]): string => {
   return classes.filter(Boolean).join(' ')

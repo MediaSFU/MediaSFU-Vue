@@ -348,9 +348,6 @@ const canShowRemoveAction = (participant: Participant) => canShowRowActions(part
 const canShowMuteStatusIndicator = (participant: Participant) =>
   !isBroadcastEvent.value && !isHostParticipant(participant);
 
-const resolveMutedLabel = (participant: Participant) =>
-  participant.muted ? 'Already muted' : 'Mute';
-
 const resolveStatusText = (participant: Participant) => {
   if (isHostParticipant(participant)) {
     return 'Host';
@@ -692,7 +689,7 @@ const renderEmbeddedEmptyState = () => {
       fontFamily: 'var(--ms-modern-font-family)',
       fontSize: '0.86rem',
     } satisfies CSSProperties,
-  }, fallbackEmptyState);
+  }, [fallbackEmptyState ?? '']);
 };
 
 const renderEmbeddedContent = (_options: { defaultContent: VNodeChild; counter: number }) => {

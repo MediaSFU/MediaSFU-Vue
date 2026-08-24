@@ -1,4 +1,4 @@
-import type { ResponseLocalConnection } from '../../../SharedTypes';
+import type { ResponseLocalConnection } from '../SharedTypes';
 
 /**
  * MediaSFU-specific Socket type alias to ensure consistent typing across Vue components.

@@ -193,7 +193,7 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { modifySettings } from 'mediasfu-shared';
 import type { ModifySettingsOptions } from 'mediasfu-shared';
 import type { Socket } from 'socket.io-client';
-import type { ShowAlert } from '../../../../SharedTypes';
+import type { ShowAlert } from '../../SharedTypes';
 
 export interface EventSettingOption {
   value: string;

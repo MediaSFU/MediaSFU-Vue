@@ -198,7 +198,7 @@
           :key="`${renderKey}-pagination`"
           :style="paginationStageStyle"
         >
-          <ModernPagination v-bind="paginationProps" />
+          <component :is="auditComponents.pagination" v-bind="paginationProps" />
         </div>
 
         <div
@@ -417,7 +417,7 @@
           :key="`${renderKey}-video-card`"
           :style="cardStageStyle"
         >
-          <ModernVideoCard v-bind="videoCardProps" />
+          <component :is="auditComponents.videoCard" v-bind="videoCardProps" />
         </div>
 
         <div
@@ -425,7 +425,7 @@
           :key="`${renderKey}-audio-card`"
           :style="cardStageStyle"
         >
-          <ModernAudioCard v-bind="audioCardProps" />
+          <component :is="auditComponents.audioCard" v-bind="audioCardProps" />
         </div>
 
         <div
@@ -433,7 +433,7 @@
           :key="`${renderKey}-breakout-rooms`"
           class="ms-audit-modal-shell"
         >
-          <ModernBreakoutRoomsModal v-bind="breakoutRoomsModalProps" />
+          <component :is="auditComponents.breakoutRooms" v-bind="breakoutRoomsModalProps" />
         </div>
 
         <div
@@ -441,7 +441,7 @@
           :key="`${renderKey}-configure-whiteboard`"
           class="ms-audit-modal-shell"
         >
-          <ModernConfigureWhiteboardModal v-bind="configureWhiteboardModalProps" />
+          <component :is="auditComponents.configureWhiteboard" v-bind="configureWhiteboardModalProps" />
         </div>
 
         <div
@@ -449,24 +449,7 @@
           :key="`${renderKey}-messages`"
           class="ms-audit-modal-shell"
         >
-          <ModernMessagesModal
-            :is-messages-modal-visible="true"
-            :on-messages-close="noOp"
-            :messages="messagesFixture"
-            event-type="conference"
-            member="Host"
-            islevel="2"
-            :co-host-responsibility="[]"
-            co-host="Maya"
-            :start-direct-message="scenarioId === 'direct'"
-            :direct-message-details="directMessageDetails"
-            :update-start-direct-message="noOp"
-            :update-direct-message-details="noOp"
-            room-name="audit-room"
-            :socket="auditSocket"
-            chat-setting="allow"
-            :render-mode="messagesRenderMode"
-          />
+          <component :is="auditComponents.messages" v-bind="messagesModalProps" />
         </div>
 
         <div
@@ -474,14 +457,7 @@
           :key="`${renderKey}-participants`"
           class="ms-audit-modal-shell"
         >
-          <ModernParticipantsModal
-            :is-participants-modal-visible="true"
-            :on-participants-close="noOp"
-            :on-participants-filter-change="noOp"
-            :participants-counter="participantsFixture.length"
-            :parameters="participantsModalParameters"
-            :render-mode="participantsRenderMode"
-          />
+          <component :is="auditComponents.participants" v-bind="participantsModalProps" />
         </div>
 
         <div
@@ -489,7 +465,7 @@
           :key="`${renderKey}-permissions`"
           class="ms-audit-modal-shell"
         >
-          <ModernPermissionsModal v-bind="permissionsModalProps" />
+          <component :is="auditComponents.permissions" v-bind="permissionsModalProps" />
         </div>
 
         <div
@@ -497,7 +473,7 @@
           :key="`${renderKey}-panelists`"
           class="ms-audit-modal-shell"
         >
-          <ModernPanelistsModal v-bind="panelistsModalProps" />
+          <component :is="auditComponents.panelists" v-bind="panelistsModalProps" />
         </div>
 
         <div
@@ -505,7 +481,7 @@
           :key="`${renderKey}-poll`"
           class="ms-audit-modal-shell"
         >
-          <ModernPollModal v-bind="pollModalProps" />
+          <component :is="auditComponents.poll" v-bind="pollModalProps" />
         </div>
 
         <div
@@ -513,7 +489,7 @@
           :key="`${renderKey}-recording`"
           class="ms-audit-modal-shell"
         >
-          <ModernRecordingModal v-bind="recordingModalProps" />
+          <component :is="auditComponents.recording" v-bind="recordingModalProps" />
         </div>
 
         <div
@@ -521,7 +497,7 @@
           :key="`${renderKey}-whiteboard`"
           :style="whiteboardStageStyle"
         >
-          <ModernWhiteboard v-bind="whiteboardProps" />
+          <component :is="auditComponents.whiteboard" v-bind="whiteboardProps" />
         </div>
 
         <div
@@ -529,7 +505,7 @@
           :key="`${renderKey}-translation`"
           class="ms-audit-modal-shell"
         >
-          <ModernTranslationSettingsModal v-bind="translationModalProps" />
+          <component :is="auditComponents.translation" v-bind="translationModalProps" />
         </div>
 
         <div
@@ -545,7 +521,7 @@
           :key="`${renderKey}-media-settings`"
           class="ms-audit-modal-shell"
         >
-          <ModernMediaSettingsModal v-bind="mediaSettingsModalProps" />
+          <component :is="auditComponents.mediaSettings" v-bind="mediaSettingsModalProps" />
         </div>
 
         <div
@@ -553,7 +529,7 @@
           :key="`${renderKey}-menu`"
           class="ms-audit-modal-shell"
         >
-          <ModernMenuModal v-bind="menuModalProps" />
+          <component :is="auditComponents.menu" v-bind="menuModalProps" />
         </div>
 
         <div
@@ -561,7 +537,7 @@
           :key="`${renderKey}-display-settings`"
           class="ms-audit-modal-shell"
         >
-          <ModernDisplaySettingsModal v-bind="displaySettingsModalProps" />
+          <component :is="auditComponents.displaySettings" v-bind="displaySettingsModalProps" />
         </div>
 
         <div
@@ -569,7 +545,7 @@
           :key="`${renderKey}-requests`"
           class="ms-audit-modal-shell"
         >
-          <ModernRequestsModal v-bind="requestsModalProps" />
+          <component :is="auditComponents.requests" v-bind="requestsModalProps" />
         </div>
 
         <div
@@ -577,7 +553,7 @@
           :key="`${renderKey}-waiting`"
           class="ms-audit-modal-shell"
         >
-          <ModernWaitingModal v-bind="waitingModalProps" />
+          <component :is="auditComponents.waiting" v-bind="waitingModalProps" />
         </div>
 
         <div
@@ -585,7 +561,7 @@
           :key="`${renderKey}-share-event`"
           class="ms-audit-modal-shell"
         >
-          <ModernShareEventModal v-bind="shareEventModalProps" />
+          <component :is="auditComponents.shareEvent" v-bind="shareEventModalProps" />
         </div>
 
         <div
@@ -604,7 +580,8 @@
           <ModernConfirmHereModal v-bind="confirmHereModalProps" />
         </div>
 
-        <ModernPreJoinPage
+        <component
+          :is="auditComponents.preJoin"
           v-else-if="componentId === 'prejoin'"
           :key="`${renderKey}-prejoin`"
           v-bind="preJoinProps"
@@ -622,7 +599,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, h, markRaw, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, defineComponent, h, markRaw, nextTick, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
 import {
   faComments,
   faCog,
@@ -634,6 +611,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type {
   Credentials,
+  EventType,
   Message,
   Participant,
   PreJoinPageParameters,
@@ -641,6 +619,22 @@ import type {
   WaitingRoomParticipant,
   WelcomePageParameters,
 } from '../SharedTypes';
+import type { PaginationParameters } from '../components/displayComponents/Pagination.vue';
+import type { VideoCardParameters } from '../components/displayComponents/VideoCard.vue';
+import type { AudioCardParameters } from '../components/displayComponents/AudioCard.vue';
+import type { BreakoutRoomsModalParameters } from '../components/breakoutComponents/BreakoutRoomsModal.vue';
+import type { ConfigureWhiteboardModalParameters } from '../components/whiteboardComponents/ConfigureWhiteboardModal.vue';
+import type { ParticipantsModalParameters } from '../components/participantsComponents/ParticipantsModal.vue';
+import type { PermissionsModalParameters } from '../components/permissionsComponents/PermissionsModal.vue';
+import type { PanelistsModalParameters } from '../components/panelistsComponents/PanelistsModal.vue';
+import type { RecordingModalParameters } from '../components/recordingComponents/RecordingModal.vue';
+import type { WhiteboardParameters, Shape, Participant as WhiteboardParticipant } from '../components/whiteboardComponents/Whiteboard.vue';
+import type { TranslationSettingsModalParameters } from '../components/translationComponents/TranslationSettingsModal.vue';
+import type { MediaSettingsModalParameters } from '../components/mediaSettingsComponents/MediaSettingsModal.vue';
+import type { ModernDisplaySettingsModalParameters } from '../modern/modal_components/ModernDisplaySettingsModal.vue';
+import type { RequestsModalParameters } from '../components/requestsComponents/RequestsModal.vue';
+import type { WaitingRoomModalParameters } from '../components/waitingComponents/WaitingModal.vue';
+import { initialValuesState } from '../methods/utils/initialValuesState';
 import ModernAlertComponent from '../modern/display_components/ModernAlertComponent.vue';
 import ModernAudioCard from '../modern/display_components/ModernAudioCard.vue';
 import ModernControlButtonsComponent from '../modern/display_components/ModernControlButtonsComponent.vue';
@@ -725,7 +719,29 @@ type ViewportId = 'desktop' | 'mobile';
 type GridTone = 'primary' | 'accent' | 'emerald' | 'amber' | 'indigo' | 'slate';
 
 type ScenarioOption = { id: string; label: string };
-type AuditParameterBag = Record<string, unknown> & { getUpdatedAllParams?: () => AuditParameterBag };
+const asAuditComponent = <T extends Component>(component: T): T => markRaw(component);
+const auditComponents = {
+  pagination: asAuditComponent(ModernPagination),
+  videoCard: asAuditComponent(ModernVideoCard),
+  audioCard: asAuditComponent(ModernAudioCard),
+  breakoutRooms: asAuditComponent(ModernBreakoutRoomsModal),
+  configureWhiteboard: asAuditComponent(ModernConfigureWhiteboardModal),
+  messages: asAuditComponent(ModernMessagesModal),
+  participants: asAuditComponent(ModernParticipantsModal),
+  permissions: asAuditComponent(ModernPermissionsModal),
+  panelists: asAuditComponent(ModernPanelistsModal),
+  poll: asAuditComponent(ModernPollModal),
+  recording: asAuditComponent(ModernRecordingModal),
+  whiteboard: asAuditComponent(ModernWhiteboard),
+  translation: asAuditComponent(ModernTranslationSettingsModal),
+  mediaSettings: asAuditComponent(ModernMediaSettingsModal),
+  menu: asAuditComponent(ModernMenuModal),
+  displaySettings: asAuditComponent(ModernDisplaySettingsModal),
+  requests: asAuditComponent(ModernRequestsModal),
+  waiting: asAuditComponent(ModernWaitingModal),
+  shareEvent: asAuditComponent(ModernShareEventModal),
+  preJoin: asAuditComponent(ModernPreJoinPage),
+};
 
 const resolveGridTilePalette = (tone: GridTone, isDarkMode: boolean) => {
   const palettes: Record<GridTone, { background: string; border: string; kicker: string; label: string; detail: string }> = {
@@ -1228,7 +1244,7 @@ const hideChrome = ref(searchParams.get('chrome') === '0');
 
 const resolveScenarioId = (component: ComponentId, value: string | null) => {
   const scenario = componentRegistry[component].scenarios.find((option) => option.id === value);
-  return scenario?.id ?? componentRegistry[component].scenarios[0].id;
+  return scenario?.id ?? componentRegistry[component].scenarios[0]?.id ?? 'default';
 };
 
 const scenarioId = ref(resolveScenarioId(componentId.value, searchParams.get('scenario')));
@@ -1378,6 +1394,9 @@ const credentials: Credentials = {
   apiUserName: 'audit-user',
   apiKey: 'audit-key',
 };
+const auditEventType: EventType = 'conference';
+const auditRecordingDisplayType: RecordingModalParameters['recordingDisplayType'] = 'all';
+const auditImageDataUri = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="16" fill="%232563eb"/%3E%3Cpath d="M18 22h28v20H18z" fill="%23fff"/%3E%3C/svg%3E';
 
 const noOpAsync = async () => ({ id: 'audit-socket' } as never);
 const noOpAsyncVoid = async () => undefined;
@@ -1387,6 +1406,16 @@ const auditSocket = {
   on: noOp,
   off: noOp,
 } as never;
+const inertMediaDevices: MediaDevices = {
+  ondevicechange: null,
+  enumerateDevices: async () => [],
+  getDisplayMedia: noOpAsync,
+  getSupportedConstraints: () => ({}),
+  getUserMedia: noOpAsync,
+  addEventListener: noOp,
+  removeEventListener: noOp,
+  dispatchEvent: () => true,
+};
 
 const auditParticipants = [
   {
@@ -1485,7 +1514,7 @@ const auditUserVoiceClones = [
   },
 ];
 
-const auditPermissionConfig = {
+const auditPermissionConfig: NonNullable<PermissionsModalParameters['permissionConfig']> = {
   level0: {
     useMic: 'approval',
     useCamera: 'approval',
@@ -1568,19 +1597,20 @@ const createPreviewWhiteboardShapes = () => ([
   },
 ]);
 
-const auditVideoInputs = [
-  { deviceId: 'camera-front', label: 'Front Camera' },
-  { deviceId: 'camera-rear', label: 'Rear Camera' },
+const auditVideoInputs: MediaDeviceInfo[] = [
+  { deviceId: 'camera-front', groupId: 'audit-cameras', kind: 'videoinput', label: 'Front Camera', toJSON: () => ({}) },
+  { deviceId: 'camera-rear', groupId: 'audit-cameras', kind: 'videoinput', label: 'Rear Camera', toJSON: () => ({}) },
 ];
 
-const auditAudioInputs = [
-  { deviceId: 'mic-default', label: 'Default Microphone' },
-  { deviceId: 'mic-usb', label: 'USB Microphone' },
+const auditAudioInputs: MediaDeviceInfo[] = [
+  { deviceId: 'mic-default', groupId: 'audit-microphones', kind: 'audioinput', label: 'Default Microphone', toJSON: () => ({}) },
+  { deviceId: 'mic-usb', groupId: 'audit-microphones', kind: 'audioinput', label: 'USB Microphone', toJSON: () => ({}) },
 ];
 
 const createMeetingAuditParameters = () => {
   const parameters = {
-    imgSrc: 'https://mediasfu.com/images/logo192.png',
+    ...initialValuesState,
+    imgSrc: auditImageDataUri,
     showAlert: noOp,
     updateIsLoadingModalVisible: noOp,
     connectSocket: noOpAsync,
@@ -1607,7 +1637,7 @@ const createMeetingAuditParameters = () => {
     member: 'Host',
     coHost: 'Maya',
     islevel: '2',
-    eventType: 'conference',
+    eventType: auditEventType,
     socket: auditSocket,
     localSocket: auditSocket,
     participants: auditParticipants,
@@ -1623,8 +1653,8 @@ const createMeetingAuditParameters = () => {
     updateWaitingList: noOp,
     videoInputs: auditVideoInputs,
     audioInputs: auditAudioInputs,
-    userDefaultVideoInputDevice: auditVideoInputs[0].deviceId,
-    userDefaultAudioInputDevice: auditAudioInputs[0].deviceId,
+    userDefaultVideoInputDevice: auditVideoInputs[0]?.deviceId ?? '',
+    userDefaultAudioInputDevice: auditAudioInputs[0]?.deviceId ?? '',
     isBackgroundModalVisible: false,
     updateIsBackgroundModalVisible: noOp,
     meetingDisplayType: 'video',
@@ -1676,7 +1706,7 @@ const createMeetingAuditParameters = () => {
     updateRecordingVideoOptions: noOp,
     updateRecordingAddHLS: noOp,
     recordingVideoType: 'camera',
-    recordingDisplayType: 'all',
+    recordingDisplayType: auditRecordingDisplayType,
     recordingBackgroundColor: '#0f172a',
     recordingNameTagsColor: '#ffffff',
     recordingOrientationVideo: 'landscape',
@@ -1695,18 +1725,16 @@ const createMeetingAuditParameters = () => {
     updateRecordingCustomText: noOp,
     updateRecordingCustomTextPosition: noOp,
     updateRecordingCustomTextColor: noOp,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+  };
   return parameters;
 };
 
 const createPreviewMeetingParameters = () => {
-  const parameters = createMeetingAuditParameters();
-  parameters.breakoutRooms = previewBreakoutRooms;
-  parameters.whiteboardUsers = previewWhiteboardUsers;
-  parameters.getUpdatedAllParams = () => parameters;
-  return parameters;
+  return {
+    ...createMeetingAuditParameters(),
+    breakoutRooms: previewBreakoutRooms,
+    whiteboardUsers: previewWhiteboardUsers,
+  };
 };
 
 const alertOverlayProps = computed(() => ({
@@ -1730,7 +1758,7 @@ const timerMeetingProgress = computed(() => {
   return '12:18';
 });
 
-const timerStageStyle = computed(() => ({
+const timerStageStyle = computed<CSSProperties>(() => ({
   position: 'relative',
   minHeight: '220px',
   width: scenarioId.value === 'compact' ? '160px' : '320px',
@@ -1751,12 +1779,30 @@ const paginationTotalPages = computed(() => (scenarioId.value === 'single' ? 1 :
 const paginationCurrentPage = computed(() => (scenarioId.value === 'single' ? 1 : 4));
 
 const paginationParameters = computed(() => {
-  const parameters = createMeetingAuditParameters();
-  parameters.mainRoomsLength = paginationTotalPages.value;
-  parameters.memberRoom = paginationCurrentPage.value;
-  parameters.hostNewRoom = 0;
-  parameters.breakoutRooms = [];
-  parameters.getUpdatedAllParams = () => parameters;
+  const parameters: PaginationParameters = {
+    ...createMeetingAuditParameters(),
+    mainRoomsLength: paginationTotalPages.value,
+    memberRoom: paginationCurrentPage.value,
+    hostNewRoom: 0,
+    breakoutRooms: [],
+    updateCurrentUserPage: noOp,
+    updateUpdateMainWindow: noOp,
+    dispStreams: noOpAsyncVoid,
+    updateActiveNames: noOp,
+    updateDispActiveNames: noOp,
+    updateLStreams: noOp,
+    updateChatRefStreams: noOp,
+    updateNForReadjustRecord: noOp,
+    updateShowMiniView: noOp,
+    processConsumerTransports: noOpAsyncVoid,
+    resumePauseStreams: noOpAsyncVoid,
+    readjust: noOpAsyncVoid,
+    addVideosGrid: noOpAsyncVoid,
+    getEstimate: () => [0, 0, 0],
+    checkGrid: noOp,
+    resumePauseAudioStreams: noOpAsyncVoid,
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
@@ -1946,7 +1992,7 @@ const mainContainerProps = computed(() => ({
   padding: mainContainerLayout.value.padding,
 }));
 
-const mainContainerContentStyle = computed(() => ({
+const mainContainerContentStyle = computed<CSSProperties>(() => ({
   display: 'grid',
   gridTemplateColumns: mainContainerLayout.value.columns,
   gap: viewport.value === 'mobile' || scenarioId.value === 'mobile' ? '12px' : '16px',
@@ -2033,7 +2079,7 @@ const mainAspectProps = computed(() => ({
   updateIsSmallScreen: noOp,
 }));
 
-const mainAspectContentStyle = computed(() => ({
+const mainAspectContentStyle = computed<CSSProperties>(() => ({
   display: 'grid',
   gridTemplateColumns: mainAspectLayout.value.columns,
   gap: mainAspectLayout.value.gap,
@@ -2123,7 +2169,7 @@ const mainGridProps = computed(() => ({
   isDarkMode: theme.value === 'dark',
 }));
 
-const mainGridContentStyle = computed(() => ({
+const mainGridContentStyle = computed<CSSProperties>(() => ({
   display: 'grid',
   gridTemplateColumns: mainGridLayout.value.columns,
   gap: viewport.value === 'mobile' ? '12px' : '16px',
@@ -2216,7 +2262,7 @@ const otherGridProps = computed(() => ({
   isDarkMode: theme.value === 'dark',
 }));
 
-const otherGridContentStyle = computed(() => ({
+const otherGridContentStyle = computed<CSSProperties>(() => ({
   display: 'grid',
   gridTemplateColumns: otherGridLayout.value.columns,
   gap: viewport.value === 'mobile' ? '12px' : '14px',
@@ -2308,7 +2354,7 @@ const subAspectProps = computed(() => ({
   defaultFractionSub: subAspectLayout.value.defaultFractionSub,
 }));
 
-const subAspectContentStyle = computed(() => ({
+const subAspectContentStyle = computed<CSSProperties>(() => ({
   display: 'grid',
   gridTemplateColumns: subAspectLayout.value.columns,
   gap: viewport.value === 'mobile' ? '10px' : '12px',
@@ -2426,21 +2472,25 @@ const cardStageStyle = computed(() => ({
   margin: '72px auto',
 }));
 
-const videoCardParticipant = computed(() => ({
+const videoCardParticipant = computed<Participant>(() => ({
   id: 'participant-video-card',
+  audioID: 'audio-video-card',
+  videoID: 'video-video-card',
   name: scenarioId.value === 'muted' ? 'Jordan' : scenarioId.value === 'subtitle' ? 'Taylor' : 'Maya',
   islevel: scenarioId.value === 'muted' ? '0' : '1',
   muted: scenarioId.value === 'muted',
   videoOn: scenarioId.value !== 'muted',
-} as Participant));
+}));
 
-const audioCardParticipant = computed(() => ({
+const audioCardParticipant = computed<Participant>(() => ({
   id: 'participant-audio-card',
+  audioID: 'audio-audio-card',
+  videoID: 'video-audio-card',
   name: scenarioId.value === 'muted' ? 'Jordan' : scenarioId.value === 'subtitle' ? 'Sam' : 'Avery',
   islevel: '1',
   muted: scenarioId.value === 'muted',
   videoOn: false,
-} as Participant));
+}));
 
 const videoCardLoudness = computed(() => {
   if (componentId.value !== 'video-card') {
@@ -2463,16 +2513,17 @@ const audioCardLoudness = computed(() => {
 });
 
 const cardParameters = computed(() => {
-  const parameters = createMeetingAuditParameters();
   const participants = [videoCardParticipant.value, audioCardParticipant.value];
-
-  parameters.participants = participants;
-  parameters.filteredParticipants = participants;
-  parameters.audioDecibels = [
-    { name: videoCardParticipant.value.name, averageLoudness: videoCardLoudness.value },
-    { name: audioCardParticipant.value.name, averageLoudness: audioCardLoudness.value },
-  ];
-  parameters.getUpdatedAllParams = () => parameters;
+  const parameters: VideoCardParameters & AudioCardParameters = {
+    ...createMeetingAuditParameters(),
+    participants,
+    filteredParticipants: participants,
+    audioDecibels: [
+      { name: videoCardParticipant.value.name, averageLoudness: videoCardLoudness.value },
+      { name: audioCardParticipant.value.name, averageLoudness: audioCardLoudness.value },
+    ],
+    getUpdatedAllParams: () => parameters,
+  };
 
   return parameters;
 });
@@ -2491,7 +2542,7 @@ const audioCardSubtitleText = computed(() => (
 
 const audioCardImageSource = computed(() => (
   componentId.value === 'audio-card' && scenarioId.value === 'subtitle'
-    ? 'https://mediasfu.com/images/logo192.png'
+    ? auditImageDataUri
     : undefined
 ));
 
@@ -2499,8 +2550,9 @@ const videoCardProps = computed(() => ({
   name: videoCardParticipant.value.name,
   participant: videoCardParticipant.value,
   remoteProducerId: 'audit-video-producer',
-  eventType: 'conference',
+  eventType: auditEventType,
   forceFullDisplay: false,
+  videoStream: null,
   parameters: cardParameters.value,
   liveSubtitleText: videoCardSubtitleText.value,
   showSubtitles: true,
@@ -2517,7 +2569,7 @@ const audioCardProps = computed(() => ({
 }));
 
 const preJoinParameters: PreJoinPageParameters = {
-  imgSrc: 'https://mediasfu.com/images/logo192.png',
+  imgSrc: auditImageDataUri,
   eventType: 'webinar',
   showAlert: noOp,
   updateIsLoadingModalVisible: noOp,
@@ -2536,13 +2588,13 @@ const preJoinParameters: PreJoinPageParameters = {
 
 const preJoinProps = computed(() => ({
   returnUI: true,
-  entryShellLayout: viewport.value === 'mobile' ? 'inline' : 'split',
+  entryShellLayout: viewport.value === 'mobile' ? 'inline' as const : 'split' as const,
   parameters: preJoinParameters,
   credentials,
 }));
 
 const welcomeParameters: WelcomePageParameters = {
-  imgSrc: 'https://mediasfu.com/images/logo192.png',
+  imgSrc: auditImageDataUri,
   showAlert: noOp,
   updateIsLoadingModalVisible: noOp,
   connectSocket: noOpAsync,
@@ -2559,15 +2611,34 @@ const messagesFixture = computed(() => (
   scenarioId.value === 'empty'
     ? []
     : scenarioId.value === 'group'
-      ? [auditMessages[0]]
+      ? auditMessages.slice(0, 1)
       : auditMessages
 ));
 
 const directMessageDetails = computed(() => (
   scenarioId.value === 'direct'
-    ? auditParticipants[1]
-    : undefined
+    ? auditParticipants[1] ?? null
+    : null
 ));
+
+const messagesModalProps = computed(() => ({
+  isMessagesModalVisible: true,
+  onMessagesClose: noOp,
+  messages: messagesFixture.value,
+  eventType: auditEventType,
+  member: 'Host',
+  islevel: '2',
+  coHostResponsibility: [],
+  coHost: 'Maya',
+  startDirectMessage: scenarioId.value === 'direct',
+  directMessageDetails: directMessageDetails.value,
+  updateStartDirectMessage: noOp,
+  updateDirectMessageDetails: noOp,
+  roomName: 'audit-room',
+  socket: auditSocket,
+  chatSetting: 'allow',
+  renderMode: messagesRenderMode.value,
+}));
 
 const participantsFixture = computed(() => (
   scenarioId.value === 'empty'
@@ -2576,13 +2647,13 @@ const participantsFixture = computed(() => (
 ));
 
 const participantsModalParameters = computed(() => {
-  const parameters = {
+  const parameters: ParticipantsModalParameters = {
     coHostResponsibility: [],
     coHost: 'Maya',
     member: 'Host',
     islevel: '2',
     participants: auditParticipants,
-    eventType: 'conference',
+    eventType: auditEventType,
     filteredParticipants: participantsFixture.value,
     socket: auditSocket,
     roomName: 'audit-room',
@@ -2590,14 +2661,22 @@ const participantsModalParameters = computed(() => {
     updateDirectMessageDetails: noOp,
     updateStartDirectMessage: noOp,
     updateParticipants: noOp,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
+const participantsModalProps = computed(() => ({
+  isParticipantsModalVisible: true,
+  onParticipantsClose: noOp,
+  onParticipantsFilterChange: noOp,
+  participantsCounter: participantsFixture.value.length,
+  parameters: participantsModalParameters.value,
+  renderMode: participantsRenderMode.value,
+}));
+
 const permissionsModalParameters = computed(() => {
-  const parameters = {
+  const parameters: PermissionsModalParameters = {
     participants: auditParticipants,
     member: 'Host',
     islevel: '2',
@@ -2610,14 +2689,13 @@ const permissionsModalParameters = computed(() => {
     videoSetting: 'approval',
     screenshareSetting: 'disallow',
     chatSetting: 'allow',
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
 const panelistsModalParameters = computed(() => {
-  const parameters = {
+  const parameters: PanelistsModalParameters = {
     participants: auditParticipants,
     panelists: auditPanelists,
     member: 'Host',
@@ -2629,25 +2707,133 @@ const panelistsModalParameters = computed(() => {
     panelistsFocused: scenarioId.value !== 'available',
     updatePanelists: noOp,
     updatePanelistsFocused: noOp,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
-const recordingParameters = computed(() => createMeetingAuditParameters());
-const breakoutRoomsParameters = computed(() => createPreviewMeetingParameters());
-const configureWhiteboardParameters = computed(() => createPreviewMeetingParameters());
-const mediaSettingsParameters = computed(() => createMeetingAuditParameters());
+const recordingParameters = computed(() => {
+  const parameters: RecordingModalParameters = {
+    ...createMeetingAuditParameters(),
+    updateRecordingVideoOptimized: noOp,
+    updateUserRecordingParams: noOp,
+    updateConfirmedToRecord: noOp,
+    updateIsRecordingModalVisible: noOp,
+    updateClearedToRecord: noOp,
+    updateRecordStarted: noOp,
+    updateRecordPaused: noOp,
+    updateRecordResumed: noOp,
+    updateStartReport: noOp,
+    updateEndReport: noOp,
+    updateCanRecord: noOp,
+    updateRecordStartTime: noOp,
+    updateRecordTimerInterval: noOp,
+    updateIsTimerRunning: noOp,
+    updateCanPauseResume: noOp,
+    updateRecordElapsedTime: noOp,
+    updateRecordingProgressTime: noOp,
+    getUpdatedAllParams: () => parameters,
+  };
+  return parameters;
+});
+const breakoutRoomsParameters = computed(() => {
+  const parameters: BreakoutRoomsModalParameters = {
+    ...createPreviewMeetingParameters(),
+    isBreakoutRoomsModalVisible: true,
+    currentRoomIndex: null,
+    updateCurrentRoomIndex: noOp,
+    getUpdatedAllParams: () => parameters,
+  };
+  return parameters;
+});
+const configureWhiteboardParameters = computed(() => {
+  const parameters: ConfigureWhiteboardModalParameters = {
+    ...createPreviewMeetingParameters(),
+    canStartWhiteboard: true,
+    getUpdatedAllParams: () => parameters,
+  };
+  return parameters;
+});
+const mediaSettingsParameters = computed(() => {
+  const parameters: MediaSettingsModalParameters = {
+    ...createMeetingAuditParameters(),
+    mediaDevices: inertMediaDevices,
+    checkMediaPermission: false,
+    updateUserDefaultAudioInputDevice: noOp,
+    updatePrevAudioInputDevice: noOp,
+    switchUserAudio: noOpAsyncVoid,
+    streamSuccessAudioSwitch: noOpAsyncVoid,
+    requestPermissionAudio: noOpAsync,
+    updateAudioProducer: noOp,
+    updateLocalAudioProducer: noOp,
+    updateLocalStream: noOp,
+    updateAudioParams: noOp,
+    updateDefAudioID: noOp,
+    updateUpdateMainWindow: noOp,
+    sleep: noOpAsyncVoid,
+    createSendTransport: noOpAsyncVoid,
+    connectSendTransportAudio: noOpAsyncVoid,
+    updateProducerTransport: noOp,
+    updateLocalProducerTransport: noOp,
+    updateAudioLevel: noOp,
+    connectSendTransport: noOpAsyncVoid,
+    connectSendTransportScreen: noOpAsyncVoid,
+    updateTransportCreated: noOp,
+    updateLocalTransportCreated: noOp,
+    updateVideoSwitching: noOp,
+    updateUserDefaultVideoInputDevice: noOp,
+    requestPermissionCamera: noOpAsync,
+    streamSuccessVideo: noOpAsyncVoid,
+    updateTransportCreatedVideo: noOp,
+    updateVideoAlreadyOn: noOp,
+    updateVideoAction: noOp,
+    updateLocalStreamVideo: noOp,
+    updateAllowed: noOp,
+    updateVideoParams: noOp,
+    updateAutoClickBackground: noOp,
+    connectSendTransportVideo: noOpAsyncVoid,
+    reorderStreams: noOpAsyncVoid,
+    updateVideoProducer: noOp,
+    updateScreenProducer: noOp,
+    updateLocalVideoProducer: noOp,
+    updateCurrentFacingMode: noOp,
+    updateDefVideoID: noOp,
+    updateParticipants: noOp,
+    updateIsBackgroundModalVisible: noOp,
+    updatePrevVideoInputDevice: noOp,
+    updateIsMediaSettingsModalVisible: noOp,
+    switchUserVideo: noOpAsyncVoid,
+    updatePrevFacingMode: noOp,
+    switchUserVideoAlt: noOpAsyncVoid,
+    disconnectSendTransportVideo: noOpAsyncVoid,
+    checkPermission: noOpAsync,
+    updateVideoRequestState: noOp,
+    updateNewLimitedStreams: noOp,
+    updateNewLimitedStreamsIDs: noOp,
+    updateActiveSounds: noOp,
+    updateScreenShareIDStream: noOp,
+    updateScreenShareNameStream: noOp,
+    updateAdminIDStream: noOp,
+    updateAdminNameStream: noOp,
+    updateYouYouStream: noOp,
+    changeVids: noOpAsyncVoid,
+    getUpdatedAllParams: () => parameters,
+  };
+  return parameters;
+});
 
-const whiteboardShapes = ref<unknown[]>(createPreviewWhiteboardShapes());
+const whiteboardShapes = ref<Shape[]>(createPreviewWhiteboardShapes());
 const whiteboardUseImageBackground = ref(false);
-const whiteboardRedoStack = ref<unknown[]>([]);
+const whiteboardRedoStack = ref<Shape[]>([]);
 const whiteboardUndoStack = ref<string[]>([]);
 const whiteboardStarted = ref(true);
 const whiteboardEnded = ref(false);
 const whiteboardUsers = ref(previewWhiteboardUsers.map((participant) => ({ ...participant })));
-const whiteboardParticipants = ref(auditParticipants.map((participant) => ({ ...participant })));
+const whiteboardParticipants = ref<WhiteboardParticipant[]>(auditParticipants.map((participant): WhiteboardParticipant => ({
+  id: participant.id ?? 'audit-participant-id',
+  name: participant.name,
+  islevel: participant.islevel ?? '0',
+})));
 const whiteboardScreenId = ref('audit-whiteboard');
 const whiteboardShareScreenStarted = ref(false);
 const whiteboardCanvas = ref<HTMLCanvasElement | null>(null);
@@ -2659,55 +2845,57 @@ const whiteboardDimensions = computed(() => (
 ));
 
 const whiteboardParameters = computed(() => {
-  const parameters = createPreviewMeetingParameters();
-  parameters.shapes = whiteboardShapes.value;
-  parameters.useImageBackground = whiteboardUseImageBackground.value;
-  parameters.redoStack = whiteboardRedoStack.value;
-  parameters.undoStack = whiteboardUndoStack.value;
-  parameters.whiteboardStarted = whiteboardStarted.value;
-  parameters.whiteboardEnded = whiteboardEnded.value;
-  parameters.whiteboardUsers = whiteboardUsers.value;
-  parameters.participants = whiteboardParticipants.value;
-  parameters.participantsAll = whiteboardParticipants.value;
-  parameters.screenId = whiteboardScreenId.value;
-  parameters.shareScreenStarted = whiteboardShareScreenStarted.value;
-  parameters.targetResolution = 'hd';
-  parameters.targetResolutionHost = 'hd';
-  parameters.isDarkModeValue = theme.value === 'dark';
-  parameters.updateShapes = (value: unknown[]) => {
+  const parameters: WhiteboardParameters = {
+    ...createPreviewMeetingParameters(),
+    shapes: whiteboardShapes.value,
+    useImageBackground: whiteboardUseImageBackground.value,
+    redoStack: whiteboardRedoStack.value,
+    undoStack: whiteboardUndoStack.value,
+    whiteboardStarted: whiteboardStarted.value,
+    whiteboardEnded: whiteboardEnded.value,
+    whiteboardUsers: whiteboardUsers.value,
+    participants: whiteboardParticipants.value,
+    participantsAll: whiteboardParticipants.value,
+    screenId: whiteboardScreenId.value,
+    shareScreenStarted: whiteboardShareScreenStarted.value,
+    targetResolution: 'hd',
+    targetResolutionHost: 'hd',
+    isDarkModeValue: theme.value === 'dark',
+    updateShapes: (value: Shape[]) => {
     whiteboardShapes.value = [...value];
-  };
-  parameters.updateUseImageBackground = (value: boolean) => {
+    },
+    updateUseImageBackground: (value: boolean) => {
     whiteboardUseImageBackground.value = value;
-  };
-  parameters.updateRedoStack = (value: unknown[]) => {
+    },
+    updateRedoStack: (value: Shape[]) => {
     whiteboardRedoStack.value = [...value];
-  };
-  parameters.updateUndoStack = (value: string[]) => {
+    },
+    updateUndoStack: (value: string[]) => {
     whiteboardUndoStack.value = [...value];
-  };
-  parameters.updateWhiteboardStarted = (value: boolean) => {
+    },
+    updateWhiteboardStarted: (value: boolean) => {
     whiteboardStarted.value = value;
-  };
-  parameters.updateWhiteboardEnded = (value: boolean) => {
+    },
+    updateWhiteboardEnded: (value: boolean) => {
     whiteboardEnded.value = value;
-  };
-  parameters.updateWhiteboardUsers = (value: Array<{ name: string; useBoard: boolean }>) => {
+    },
+    updateWhiteboardUsers: (value: Array<{ name: string; useBoard: boolean }>) => {
     whiteboardUsers.value = value.map((participant) => ({ ...participant }));
-  };
-  parameters.updateParticipants = (value: Participant[]) => {
+    },
+    updateParticipants: (value: WhiteboardParticipant[]) => {
     whiteboardParticipants.value = value.map((participant) => ({ ...participant }));
-  };
-  parameters.updateScreenId = (value: string) => {
+    },
+    updateScreenId: (value: string) => {
     whiteboardScreenId.value = value;
-  };
-  parameters.updateShareScreenStarted = (value: boolean) => {
+    },
+    updateShareScreenStarted: (value: boolean) => {
     whiteboardShareScreenStarted.value = value;
-  };
-  parameters.updateCanvasWhiteboard = (value: HTMLCanvasElement | null) => {
+    },
+    updateCanvasWhiteboard: (value: HTMLCanvasElement | null) => {
     whiteboardCanvas.value = value;
+    },
+    getUpdatedAllParams: () => parameters,
   };
-  parameters.getUpdatedAllParams = () => parameters;
   return parameters;
 });
 
@@ -2741,30 +2929,53 @@ const waitingFixture = computed(() => (
 ));
 
 const requestsModalParameters = computed(() => {
-  const parameters = {
+  const parameters: RequestsModalParameters = {
     filteredRequestList: requestsFixture.value,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => ({ filteredRequestList: parameters.filteredRequestList ?? [] }),
+  };
   return parameters;
 });
 
 const waitingModalParameters = computed(() => {
-  const parameters = {
+  const parameters: WaitingRoomModalParameters = {
     filteredWaitingRoomList: waitingFixture.value,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
-const displaySettingsParameters = computed(() => ({
-  meetingDisplayType: 'video',
-  autoWave: true,
-  forceFullDisplay: false,
-  meetingVideoOptimized: true,
-  showSubtitlesOnCards: true,
-}));
+const displaySettingsParameters = computed<ModernDisplaySettingsModalParameters>(() => {
+  const parameters: ModernDisplaySettingsModalParameters = {
+    ...createMeetingAuditParameters(),
+    meetingDisplayType: 'video',
+    autoWave: true,
+    forceFullDisplay: false,
+    meetingVideoOptimized: true,
+    showSubtitlesOnCards: true,
+    updateAutoWave: noOp,
+    updateForceFullDisplay: noOp,
+    updateMeetingVideoOptimized: noOp,
+    updatePrevForceFullDisplay: noOp,
+    updatePrevMeetingDisplayType: noOp,
+    updateIsDisplaySettingsModalVisible: noOp,
+    updateFirstAll: noOp,
+    updateUpdateMainWindow: noOp,
+    updateAddForBasic: noOp,
+    updateItemPageLimit: noOp,
+    reorderStreams: noOpAsyncVoid,
+    updateNewLimitedStreams: noOp,
+    updateNewLimitedStreamsIDs: noOp,
+    updateActiveSounds: noOp,
+    updateScreenShareIDStream: noOp,
+    updateScreenShareNameStream: noOp,
+    updateAdminIDStream: noOp,
+    updateAdminNameStream: noOp,
+    updateYouYouStream: noOp,
+    changeVids: noOpAsyncVoid,
+    getUpdatedAllParams: () => parameters,
+  };
+  return parameters;
+});
 
 const permissionsModalProps = computed(() => ({
   isPermissionsModalVisible: true,
@@ -2800,7 +3011,7 @@ const pollModalProps = computed(() => ({
   member: 'Host',
   islevel: '2',
   polls: auditPolls,
-  poll: auditPolls[0],
+  poll: auditPolls[0] ?? null,
   socket: auditSocket,
   roomName: 'audit-room',
   showAlert: noOp,
@@ -2827,7 +3038,7 @@ const translationModalParameters = computed(() => {
   const isPersonal = scenarioId.value === 'personal';
   const isClone = scenarioId.value === 'clone';
 
-  const parameters = {
+  const parameters: TranslationSettingsModalParameters = {
     translationConfig: {
       supportTranslation: !isUnsupported && !isPending,
       spokenLanguageMode: 'any',
@@ -2872,9 +3083,8 @@ const translationModalParameters = computed(() => {
     socket: auditSocket,
     roomName: 'audit-room',
     showAlert: noOp,
-  } as AuditParameterBag;
-
-  parameters.getUpdatedAllParams = () => parameters;
+    getUpdatedAllParams: () => parameters,
+  };
   return parameters;
 });
 
@@ -2919,7 +3129,7 @@ const menuModalProps = computed(() => ({
   roomName: 'audit-room',
   adminPasscode: '2468',
   islevel: '2',
-  eventType: 'conference',
+  eventType: auditEventType,
   localLink: 'https://audits.mediasfu.com/rooms/audit-room',
   renderMode: menuRenderMode.value,
   isDarkMode: theme.value === 'dark',
@@ -2965,7 +3175,7 @@ const shareEventModalProps = computed(() => ({
   roomName: 'audit-room',
   adminPasscode: '2468',
   islevel: '2',
-  eventType: 'conference',
+  eventType: auditEventType,
   localLink: 'https://audits.mediasfu.com/rooms/audit-room',
   shareButtons: true,
   renderMode: shareEventRenderMode.value,

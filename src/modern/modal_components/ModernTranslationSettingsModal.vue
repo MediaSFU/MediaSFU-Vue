@@ -503,6 +503,7 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type InputHTMLAttributes,
+  type VNodeProps,
 } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import {
@@ -554,6 +555,10 @@ interface VoiceCloneOption {
 export interface ModernTranslationSettingsModalProps extends TranslationSettingsModalProps {
   renderMode?: ModernTranslationSettingsRenderMode;
 }
+
+const toMergeableVNodeProps = (
+  attributes: HTMLAttributes | ButtonHTMLAttributes | InputHTMLAttributes,
+): Record<string, unknown> & VNodeProps => Object.fromEntries(Object.entries(attributes));
 
 const props = withDefaults(defineProps<ModernTranslationSettingsModalProps>(), {
   backgroundColor: undefined,
@@ -818,7 +823,7 @@ const mergedOverlayProps = computed(() =>
             zIndex: 1200,
           } satisfies CSSProperties,
     },
-    props.overlayProps ?? {}
+    toMergeableVNodeProps(props.overlayProps ?? {})
   )
 );
 
@@ -858,7 +863,7 @@ const mergedContentProps = computed(() =>
             ...modalPositionStyle.value,
           } satisfies CSSProperties,
     },
-    props.contentProps ?? {}
+    toMergeableVNodeProps(props.contentProps ?? {})
   )
 );
 
@@ -871,7 +876,7 @@ const mergedHeaderProps = computed(() =>
         borderBottom: '1px solid var(--ms-modern-panel-border)',
       } satisfies CSSProperties,
     },
-    props.headerProps ?? {}
+    toMergeableVNodeProps(props.headerProps ?? {})
   )
 );
 
@@ -888,7 +893,7 @@ const mergedTitleProps = computed(() =>
         letterSpacing: '0.01em',
       } satisfies CSSProperties,
     },
-    props.titleProps ?? {}
+    toMergeableVNodeProps(props.titleProps ?? {})
   )
 );
 
@@ -907,7 +912,7 @@ const mergedCloseButtonProps = computed(() =>
         cursor: 'pointer',
       } satisfies CSSProperties,
     },
-    props.closeButtonProps ?? {}
+    toMergeableVNodeProps(props.closeButtonProps ?? {})
   )
 );
 
@@ -922,7 +927,7 @@ const mergedBodyProps = computed(() =>
         minHeight: 0,
       } satisfies CSSProperties,
     },
-    props.bodyProps ?? {}
+    toMergeableVNodeProps(props.bodyProps ?? {})
   )
 );
 
@@ -937,7 +942,7 @@ const mergedSearchInputProps = computed(() =>
         fontFamily: 'var(--ms-modern-font-family)',
       } satisfies CSSProperties,
     },
-    props.searchInputProps ?? {}
+    toMergeableVNodeProps(props.searchInputProps ?? {})
   )
 );
 
@@ -1076,7 +1081,7 @@ const resolveTabButtonProps = (active: boolean) =>
       'data-active': active,
       type: 'button',
     },
-    props.secondaryActionButtonProps ?? {}
+    toMergeableVNodeProps(props.secondaryActionButtonProps ?? {})
   );
 
 const resolvePillButtonProps = (active: boolean) =>
@@ -1087,7 +1092,7 @@ const resolvePillButtonProps = (active: boolean) =>
       type: 'button',
       disabled: isSaving.value,
     },
-    props.secondaryActionButtonProps ?? {}
+    toMergeableVNodeProps(props.secondaryActionButtonProps ?? {})
   );
 
 const resolveActionButtonProps = (
@@ -1105,9 +1110,11 @@ const resolveActionButtonProps = (
       type: 'button',
       disabled,
     },
-    variant === 'primary'
-      ? props.actionButtonProps ?? {}
-      : props.secondaryActionButtonProps ?? {}
+    toMergeableVNodeProps(
+      variant === 'primary'
+        ? props.actionButtonProps ?? {}
+        : props.secondaryActionButtonProps ?? {}
+    )
   );
 
 const getSpeakerLanguageOptions = (speakerId: string | undefined): LanguageOption[] => {

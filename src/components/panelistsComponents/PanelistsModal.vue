@@ -177,6 +177,7 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type InputHTMLAttributes,
+  type VNodeProps,
 } from 'vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
@@ -202,6 +203,10 @@ export interface PanelistsModalParameters {
   getUpdatedAllParams?: () => PanelistsModalParameters;
   [key: string]: unknown;
 }
+
+const toMergeableVNodeProps = (
+  attributes: HTMLAttributes | ButtonHTMLAttributes | InputHTMLAttributes,
+): Record<string, unknown> & VNodeProps => Object.fromEntries(Object.entries(attributes));
 
 export interface PanelistsModalProps {
   isPanelistsModalVisible: boolean;
@@ -299,7 +304,7 @@ const mergedOverlayProps = computed(() =>
         zIndex: 1050,
       } satisfies CSSProperties,
     },
-    props.overlayProps ?? {}
+    toMergeableVNodeProps(props.overlayProps ?? {})
   )
 );
 
@@ -320,7 +325,7 @@ const mergedContentProps = computed(() =>
         ...positionStyle.value,
       } satisfies CSSProperties,
     },
-    props.contentProps ?? {}
+    toMergeableVNodeProps(props.contentProps ?? {})
   )
 );
 
@@ -329,7 +334,7 @@ const mergedHeaderProps = computed(() =>
     {
       class: 'ms-panelists-modal__header',
     },
-    props.headerProps ?? {}
+    toMergeableVNodeProps(props.headerProps ?? {})
   )
 );
 
@@ -338,7 +343,7 @@ const mergedTitleProps = computed(() =>
     {
       class: 'ms-panelists-modal__title',
     },
-    props.titleProps ?? {}
+    toMergeableVNodeProps(props.titleProps ?? {})
   )
 );
 
@@ -347,7 +352,7 @@ const mergedBadgeWrapperProps = computed(() =>
     {
       class: 'ms-panelists-modal__badge-wrapper',
     },
-    props.badgeWrapperProps ?? {}
+    toMergeableVNodeProps(props.badgeWrapperProps ?? {})
   )
 );
 
@@ -356,7 +361,7 @@ const mergedBadgeProps = computed(() =>
     {
       class: 'ms-panelists-modal__badge',
     },
-    props.badgeProps ?? {}
+    toMergeableVNodeProps(props.badgeProps ?? {})
   )
 );
 
@@ -366,7 +371,7 @@ const mergedCloseButtonProps = computed(() =>
       class: 'ms-panelists-modal__close-button',
       type: 'button',
     },
-    props.closeButtonProps ?? {}
+    toMergeableVNodeProps(props.closeButtonProps ?? {})
   )
 );
 
@@ -375,7 +380,7 @@ const mergedBodyProps = computed(() =>
     {
       class: 'ms-panelists-modal__body',
     },
-    props.bodyProps ?? {}
+    toMergeableVNodeProps(props.bodyProps ?? {})
   )
 );
 
@@ -384,7 +389,7 @@ const mergedFocusSectionProps = computed(() =>
     {
       class: 'ms-panelists-modal__focus',
     },
-    props.focusSectionProps ?? {}
+    toMergeableVNodeProps(props.focusSectionProps ?? {})
   )
 );
 
@@ -393,7 +398,7 @@ const mergedSearchInputProps = computed(() =>
     {
       class: 'ms-panelists-modal__search-input',
     },
-    props.searchInputProps ?? {}
+    toMergeableVNodeProps(props.searchInputProps ?? {})
   )
 );
 
@@ -402,7 +407,7 @@ const mergedColumnsProps = computed(() =>
     {
       class: 'ms-panelists-modal__columns',
     },
-    props.columnsProps ?? {}
+    toMergeableVNodeProps(props.columnsProps ?? {})
   )
 );
 
@@ -491,9 +496,11 @@ const resolveActionButtonProps = (
       type: 'button',
       disabled,
     },
-    variant === 'primary'
-      ? props.actionButtonProps ?? {}
-      : props.secondaryActionButtonProps ?? {}
+    toMergeableVNodeProps(
+      variant === 'primary'
+        ? props.actionButtonProps ?? {}
+        : props.secondaryActionButtonProps ?? {}
+    )
   );
 
 const handleAddPanelist = async (participant: Participant) => {
@@ -519,7 +526,7 @@ const handleAddPanelist = async (participant: Participant) => {
     return;
   }
 
-  activeParticipantId.value = participant.id;
+  activeParticipantId.value = participant.id ?? null;
   activeParticipantAction.value = 'add';
 
   try {
@@ -562,7 +569,7 @@ const handleRemovePanelist = async (participant: Participant) => {
     return;
   }
 
-  activeParticipantId.value = participant.id;
+  activeParticipantId.value = participant.id ?? null;
   activeParticipantAction.value = 'remove';
 
   try {

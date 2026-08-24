@@ -13,7 +13,6 @@ import {
   type ButtonHTMLAttributes,
   type CSSProperties,
   type HTMLAttributes,
-  type MouseEventHandler,
   type PropType,
   type VNodeChild,
 } from 'vue';
@@ -23,7 +22,6 @@ import {
   faCircle,
   faCog,
   faPlay,
-  faTimes,
   faVideo,
 } from '@fortawesome/free-solid-svg-icons';
 import ModernStandardPanelComponent from '../recording_components/ModernStandardPanelComponent.vue';
@@ -35,6 +33,7 @@ import type {
 
 type ModernRecordingRenderMode = 'modal' | 'sidebar' | 'inline';
 type RecordingTab = 'standard' | 'advanced';
+type MouseEventHandler = (event: MouseEvent) => void | Promise<void>;
 type RecordingDisplayAdviceParameters = {
   meetingDisplayType?: string;
   breakOutRoomStarted?: boolean;

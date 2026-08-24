@@ -418,7 +418,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { getCanvasPoint } from './canvasCoordinates';
 import './Screenboard.css';
-import type { ShowAlert, SleepType } from '../../../../SharedTypes';
+import type { ShowAlert, SleepType } from '../../SharedTypes';
 
 /**
  * Parameters object for the Screenboard component

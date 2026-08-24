@@ -16,9 +16,6 @@ export default defineConfig(({ mode }) => {
         'socket.io-client', 
         'mediasoup-client', 
         '@mediapipe/selfie_segmentation',
-        '@fortawesome/react-fontawesome',
-        'react',
-        'react-dom',
         'universal-cookie',
         'bootstrap'
       ]
@@ -35,8 +32,6 @@ export default defineConfig(({ mode }) => {
         // Externalize dependencies that shouldn't be bundled
         external: [
           'vue',
-          'react',
-          'react-dom',
           'socket.io-client',
           'universal-cookie',
           'mediasfu-shared',

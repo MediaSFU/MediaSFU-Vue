@@ -241,7 +241,7 @@ export interface Participant {
   [key: string]: unknown;
 }
 
-export type ShowAlert = (alert: { message: string; type: 'success' | 'danger'; duration?: number }) => void;
+export type ShowAlert = (alert: { message: string; type: 'success' | 'danger' | 'info'; duration?: number }) => void;
 
 export interface ModifyCoHostSettingsOptions {
   roomName: string;

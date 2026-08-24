@@ -1,4 +1,4 @@
-import type { EventType } from '../../../../SharedTypes'
+import type { EventType } from '../../SharedTypes'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import type { Component } from 'vue'
 

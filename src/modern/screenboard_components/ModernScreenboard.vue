@@ -6,11 +6,12 @@
 
 <script setup lang="ts">
 import ClassicScreenboard from '../../components/screenboardComponents/Screenboard.vue';
+import type { ScreenboardParameters } from '../../components/screenboardComponents/Screenboard.vue';
 
 interface ModernScreenboardProps {
   customWidth: number;
   customHeight: number;
-  parameters: Record<string, unknown>;
+  parameters: ScreenboardParameters;
   showAspect: boolean;
 }
 

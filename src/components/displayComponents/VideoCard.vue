@@ -229,7 +229,7 @@ import type {
   Participant,
   ShowAlert,
   EventType,
-} from '../../../../SharedTypes';
+} from '../../SharedTypes';
 import type { Socket } from 'socket.io-client';
 
 /**
@@ -257,6 +257,7 @@ export interface VideoCardParameters {
   audioDecibels: AudioDecibels[];
   /** Function to get the latest parameters */
   getUpdatedAllParams: () => VideoCardParameters;
+  getCurrentParams?: () => any;
   /** Additional dynamic parameters */
   [key: string]: unknown;
 }
@@ -525,7 +526,7 @@ const resetWaveform = () => {
 // Check audio levels interval
 checkAudioInterval = setInterval(() => {
   const { getUpdatedAllParams } = props.parameters;
-  const updatedParams = getUpdatedAllParams();
+  const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
   const { audioDecibels, participants } = updatedParams;
 
   const existingEntry =
@@ -561,7 +562,7 @@ watch(
 const toggleAudio = async () => {
   if (!props.participant?.muted) {
     const { getUpdatedAllParams } = props.parameters;
-    const updatedParams = getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,
@@ -581,7 +582,7 @@ const toggleAudio = async () => {
 const toggleVideo = async () => {
   if (props.participant?.videoOn) {
     const { getUpdatedAllParams } = props.parameters;
-    const updatedParams = getUpdatedAllParams();
+    const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
       participantName: props.participant.name,
