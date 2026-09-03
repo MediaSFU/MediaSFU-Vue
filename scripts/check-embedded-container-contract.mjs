@@ -23,6 +23,21 @@ assert.equal((generic.match(/:container-width-fraction="containerWidthFraction"/
   'width must reach MainContainer, MainAspect, and MainScreen');
 assert.equal((generic.match(/:container-height-fraction="containerHeightFraction"/g) || []).length, 3,
   'height must reach MainContainer, MainAspect, and MainScreen');
+assert.equal((generic.match(/:default-fraction="embeddedMainHeightFraction"/g) || []).length, 2,
+  'MainAspect and MainScreen must share the normalized embedded height');
+assert.ok(!generic.includes(':default-fraction="1 - controlHeight"'),
+  'the fixed control strip must not be scaled by the embedded height twice');
+
+const viewportHeight = 900;
+const containerHeightFraction = 0.74;
+const controlViewportFraction = 40 / viewportHeight;
+const mainFraction = 1 - controlViewportFraction / containerHeightFraction;
+assert.ok(
+  viewportHeight * containerHeightFraction * mainFraction +
+    viewportHeight * controlViewportFraction <=
+    viewportHeight * containerHeightFraction + Number.EPSILON,
+  'MainAspect and SubAspect exceed the embedded height',
+);
 
 for (const surface of ['Webinar', 'Conference', 'Broadcast', 'Chat']) {
   const wrapper = fs.readFileSync(

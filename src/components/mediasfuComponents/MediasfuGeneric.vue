@@ -126,6 +126,10 @@
  */
 -->
 <template>
+  <Teleport
+    :to="externalUITarget"
+    :disabled="!renderUIExternally"
+  >
   <div
     ref="mediaContainerRef"
     class="MediaSFU"
@@ -155,7 +159,7 @@
     <!-- Main UI -->
     <component
       :is="MainContainer"
-      v-else-if="returnUI"
+      v-else-if="hasStandardUI"
       :container-width-fraction="containerWidthFraction"
       :container-height-fraction="containerHeightFraction"
     >
@@ -165,7 +169,7 @@
         :container-width-fraction="containerWidthFraction"
         :container-height-fraction="containerHeightFraction"
         :background-color="roomSurfaceBackgroundColor"
-        :default-fraction="1 - controlHeight"
+        :default-fraction="embeddedMainHeightFraction"
         :update-is-wide-screen="updateIsWideScreen"
         :update-is-medium-screen="updateIsMediumScreen"
         :update-is-small-screen="updateIsSmallScreen"
@@ -180,7 +184,7 @@
           :do-stack="true"
           :main-size="mainHeightWidth"
           :update-component-sizes="updateComponentSizes"
-          :default-fraction="1 - controlHeight"
+          :default-fraction="embeddedMainHeightFraction"
           :component-sizes="componentSizes"
           :show-controls="eventType === 'webinar' || eventType === 'conference'"
         >
@@ -487,7 +491,7 @@
     </component>
 
     <!-- All Modals -->
-    <template v-if="returnUI && !resolvedCustomComponent">
+    <template v-if="hasStandardUI && !resolvedCustomComponent">
       <component
         :is="MenuModalComponent"
         background-color="rgba(181, 233, 229, 0.97)"
@@ -778,6 +782,7 @@
       />
     </template>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -1239,6 +1244,16 @@ export interface MediasfuGenericOptions {
    * @default true
    */
   returnUI?: boolean;
+
+  /**
+   * Keep this component as the sole room engine while moving its exact
+   * compiled UI tree into a ModernMediasfuGenericHead target.
+   * @default false
+   */
+  renderUIExternally?: boolean;
+
+  /** CSS id selector rendered by ModernMediasfuGenericHead. */
+  externalUITarget?: string;
   
   /**
    * Configuration for programmatic (no-UI) join/create mode
@@ -1379,6 +1394,8 @@ const props = withDefaults(defineProps<MediasfuGenericOptions>(), {
   sourceParameters: undefined,
   updateSourceParameters: undefined,
   returnUI: true,
+  renderUIExternally: false,
+  externalUITarget: '#mediasfu-modern-head',
   noUIPreJoinOptions: undefined,
   joinMediaSFURoom: undefined,
   createMediaSFURoom: undefined,
@@ -1770,6 +1787,19 @@ const lStreams = ref<(Participant | Stream)[]>([]);
 const chatRefStreams = ref<(Participant | Stream)[]>([]);
 
 const controlHeight = ref<number>(0);
+const embeddedMainHeightFraction = computed<number>(() => {
+  const usesFixedControlStrip =
+    eventType.value === 'webinar' || eventType.value === 'conference';
+  if (!usesFixedControlStrip) return 1;
+
+  const boundary = Math.max(0, Number(props.containerHeightFraction) || 0);
+  if (boundary === 0) return 0;
+  const subViewportFraction = Math.min(
+    boundary,
+    Math.max(0, Number(controlHeight.value) || 0),
+  );
+  return Math.max(0, 1 - subViewportFraction / boundary);
+});
 const isWideScreen = ref<boolean>(false);
 const isMediumScreen = ref<boolean>(false);
 const isSmallScreen = ref<boolean>(false);
@@ -1900,7 +1930,7 @@ const sidebarThemeVars = computed<CSSProperties>(() => {
 
 const shouldUseSidebar = computed(() => {
   const isLandscape = windowWidth.value > windowHeight.value;
-  return validated.value && returnUI.value && isLandscape && windowWidth.value >= 1200;
+  return validated.value && hasStandardUI.value && isLandscape && windowWidth.value >= 1200;
 });
 
 const showButtonLabels = computed(() => windowWidth.value >= 576);
@@ -1930,9 +1960,9 @@ const sidebarWidth = computed(() =>
 );
 
 const isSidebarVisible = computed(() => shouldUseSidebar.value && activeSidebarContent.value !== 'none');
-const isSidebarModalVisible = computed(() => !shouldUseSidebar.value && activeSidebarContent.value !== 'none');
+const isSidebarModalVisible = computed(() => hasStandardUI.value && !shouldUseSidebar.value && activeSidebarContent.value !== 'none');
 const shouldRouteToHostedSurface = computed(() =>
-  shouldUseSidebar.value || activeSidebarContent.value !== 'none'
+  hasStandardUI.value && (shouldUseSidebar.value || activeSidebarContent.value !== 'none')
 );
 
 const mobileSidebarWidth = computed(() => {
@@ -2383,7 +2413,7 @@ const chatSetting = ref<string>('allow');
 
 // Display settings
 const displayOption = ref<string>(meetingDisplayType.value ? meetingDisplayType.value : 'media');
-const autoWave = ref<boolean>(props.returnUI !== false);
+const autoWave = ref<boolean>(props.returnUI !== false || props.renderUIExternally === true);
 const forceFullDisplay = ref<boolean>(
   eventType.value === 'webinar' || eventType.value === 'conference' ? false : true
 );
@@ -2838,6 +2868,7 @@ const credentials = computed(() => props.credentials);
 const localLink = computed(() => props.localLink ?? '');
 const connectMediaSFU = computed(() => props.connectMediaSFU ?? true);
 const returnUI = computed(() => props.returnUI ?? true);
+const hasStandardUI = computed(() => returnUI.value || props.renderUIExternally === true);
 const noUIPreJoinOptions = computed(() => props.noUIPreJoinOptions);
 const createMediaSFURoom = computed(() => props.createMediaSFURoom);
 const joinMediaSFURoom = computed(() => props.joinMediaSFURoom);
@@ -3787,7 +3818,7 @@ function runSidebarContentPreflight(content: SidebarContentType): boolean {
 }
 
 const updateActiveSidebarContent = (content: SidebarContentType, pushToStack = false) => {
-  if (!validated.value || !returnUI.value) {
+  if (!validated.value || !hasStandardUI.value) {
     activeSidebarContent.value = 'none';
     sidebarNavigationStack.value = [];
     return;
@@ -3832,7 +3863,7 @@ watch(shouldUseSidebar, () => {
 });
 
 watch(modernMenuDarkMode, () => {
-  if (validated.value && returnUI.value) {
+  if (validated.value && hasStandardUI.value) {
     scheduleResize();
   }
 });
@@ -4153,6 +4184,9 @@ const getCurrentParams = () => {
 const getAllParams = () => {
   // Get all the params for the room as well as the update functions for them and return them
   return {
+    // Renderer-only target. This same component instance retains all socket,
+    // media, modal, and sidebar state while Vue moves its compiled view.
+    renderModernMediasfuUITarget: props.externalUITarget,
     localUIMode: props.useLocalUIMode,
     roomName: roomName.value,
     member: member.value,
@@ -6941,7 +6975,7 @@ async function closeAndReset() {
   setTimeout(async function () {
     validated.value = false;
     resetRuntimeArtifacts();
-    if (returnUI.value && typeof window !== 'undefined') {
+    if (hasStandardUI.value && typeof window !== 'undefined') {
       window.location.reload();
     }
   }, 500);
@@ -7915,10 +7949,7 @@ watch([recordStarted, recordPaused, recordStopped], () => {
 watch(mainHeightWidth, (newValue, oldValue) => {
   enqueueComponentUpdate(async () => {
     if (newValue !== oldValue) {
-      const defaultFraction =
-        eventType.value === 'webinar' || eventType.value === 'conference'
-          ? 1 - controlHeight.value
-          : 1;
+      const defaultFraction = embeddedMainHeightFraction.value;
 
       applyComponentSizes(defaultFraction);
     }

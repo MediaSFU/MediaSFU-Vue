@@ -156,6 +156,68 @@ Use `customComponent` for a completely different visible workspace while the
 room component keeps lifecycle ownership. Use the composable below when you
 want explicit state and action groups as well.
 
+## Reuse SDK panels in your own layout
+
+Headless mode can combine your application layout with exported SDK controls.
+Keep the room engine mounted with `:return-ui="false"`, receive its parameter
+publications, and pass the latest room parameters to the panel you import.
+
+Keep modal visibility connected to the room:
+
+1. Open the panel through the room's matching updater, such as
+   `updateIsRecordingModalVisible(true)`.
+2. Bind the component's `isRecordingModalVisible` prop (template: `:is-recording-modal-visible`) to the current room
+   value, and make its `onClose` callback call
+   `updateIsRecordingModalVisible(false)`.
+3. Pass the current room parameters and the component's required callbacks,
+   including recording confirmation and start actions.
+4. Customize supported styles, wrappers, or overrides without replacing the
+   underlying room callbacks.
+
+Visibility props differ between components; use the exported component's
+contract, not a generic `isVisible` prop for every panel. Do not maintain a
+second independent visibility flag. With headless mode, built-in sidebar
+navigation is not your application's navigation.
+
+Opening a panel does not start recording or grant media permission. Keep
+confirmation, permission checks, and teardown under the room engine's control.
+
+### Render the complete standard UI from the headless engine
+
+Use `ModernMediasfuGenericHead` when your page needs the complete MediaSFU room
+UI at a different point in its layout without mounting a second room engine.
+The head target must appear before the engine in the template so Vue can move
+the engine's exact compiled UI tree into it on the first render.
+
+```vue
+<script setup lang="ts">
+import {
+  ModernMediasfuGeneric,
+  ModernMediasfuGenericHead,
+  useMediasfuHeadless,
+} from 'mediasfu-vue';
+
+const room = useMediasfuHeadless();
+</script>
+
+<template>
+  <ModernMediasfuGenericHead :parameters="room.parameters.value" />
+
+  <ModernMediasfuGeneric
+    :return-u-i="false"
+    render-u-i-externally
+    :source-parameters="room.sourceParameters"
+    :update-source-parameters="room.updateSourceParameters"
+    @media-changed="room.onMediaChanged"
+  />
+</template>
+```
+
+The room engine still owns sockets, tracks, modal visibility, and sidebar
+navigation. For more than one room on a page, give each engine a unique
+`external-ui-target` such as `#support-room`, and pass the matching `target-id`
+(`support-room`) to its head.
+
 ## Feature-rich headless quick start
 
 This example selects the best incoming stream, renders it, keeps all prepared
@@ -276,6 +338,19 @@ computed getter, watcher, or timer because it republishes. Pure reads use
 - [MediaSFU Open — deploy your own media server](https://github.com/MediaSFU/MediaSFUOpen)
 
 ## Working examples
+
+## Virtual backgrounds and breakout rooms in a custom Vue UI
+
+Keep `ModernBackgroundModal` wired to the newest room publication and use the
+room's visibility flag and updater rather than a second Vue ref. Render local
+camera media from `useMediasfuHeadless().localVideo`; it resolves the active
+processed/virtual stream before the raw camera, so self-view matches the stream
+published to everyone else.
+
+Reuse `ModernBreakoutRoomsModal` with the same live room bag when you want the
+built-in planner. Save assignments before Start and show action errors in your
+page. Filtering tiles is not a breakout transition: the SDK must update room
+membership and pause/resume consumers for the participant's active room.
 
 - [MediaSFU QuickStart Apps](https://github.com/MediaSFU/MediaSFU-QuickStart-Apps) — runnable Cloud, MediaSFU Open, custom-prejoin, backend-proxy, and custom-UI examples across SDKs.
 - [SpacesTek Initial](https://github.com/MediaSFU/SpacesTekInitial) → [Final](https://github.com/MediaSFU/SpacesTekFinal) → [Advanced](https://github.com/MediaSFU/SpacesTekAdvanced) — a staged path from a starter room to a product-owned Spaces-style experience.

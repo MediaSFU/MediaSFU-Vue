@@ -671,10 +671,14 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
       ) {
         ctx?.save()
         ctx?.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height)
+        if (ctx) ctx.globalCompositeOperation = 'source-over'
         ctx?.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height)
 
         if (ctx) {
-          ctx.globalCompositeOperation = 'source-out'
+          ctx.globalCompositeOperation = 'source-in'
+          ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height)
+
+          ctx.globalCompositeOperation = 'destination-over'
           const pattern = ctx.createPattern(virtualImage, repeatMode)
           if (pattern) {
             ctx.fillStyle = pattern
@@ -682,9 +686,6 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
             ctx.fillStyle = ''
           }
           ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height)
-
-          ctx.globalCompositeOperation = 'destination-atop'
-          ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height)
 
           ctx.restore()
           markFirstFrameRendered()

@@ -304,7 +304,7 @@ type MiniCardComponentProps = InstanceType<typeof MiniCard>['$props'];
  * Configuration for waveform bar heights
  * @interface WaveformHeightsConfig
  */
-interface WaveformHeightsConfig {
+export interface WaveformHeightsConfig {
   /** Height in pixels when audio is silent @default 1 */
   silent?: number;
   /** Height in pixels when audio is active @default 12 */
@@ -315,7 +315,7 @@ interface WaveformHeightsConfig {
  * Options passed to custom waveform bar renderer
  * @interface WaveformBarRenderOptions
  */
-interface WaveformBarRenderOptions {
+export interface WaveformBarRenderOptions {
   /** Bar index (0-based) */
   index: number;
   /** Whether this bar is currently animated (active audio) */
@@ -334,9 +334,9 @@ interface WaveformBarRenderOptions {
  * @param {WaveformBarRenderOptions} options - Rendering options
  * @returns {VNodeChild} Custom VNode for the waveform bar
  */
-type WaveformBarRenderer = (options: WaveformBarRenderOptions) => VNodeChild;
+export type WaveformBarRenderer = (options: WaveformBarRenderOptions) => VNodeChild;
 
-type ButtonAttrs = HTMLAttributes & {
+export type ButtonAttrs = HTMLAttributes & {
   type?: string;
   onClick?: (event: MouseEvent) => void;
 };
@@ -345,7 +345,7 @@ type ButtonAttrs = HTMLAttributes & {
  * Per-button HTML attribute configuration
  * @interface ControlButtonPropsConfig
  */
-interface ControlButtonPropsConfig {
+export interface ControlButtonPropsConfig {
   /** Attributes for the audio toggle button */
   audio?: ButtonAttrs;
   /** Attributes for the video toggle button */

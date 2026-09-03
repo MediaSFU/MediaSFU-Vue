@@ -81,7 +81,7 @@ import {
  * Options passed to `renderContainer` function
  * @interface RenderContainerOptions
  */
-interface RenderContainerOptions {
+export interface RenderContainerOptions {
   /** The default rendered container with all styling applied */
   defaultContainer: VNode;
   /** Whether the card is displaying an image (true) or initials (false) */
@@ -92,7 +92,7 @@ interface RenderContainerOptions {
  * Options passed to `renderImage` function
  * @interface RenderImageOptions
  */
-interface RenderImageOptions {
+export interface RenderImageOptions {
   /** The default rendered image element (null if no imageSource) */
   defaultImage: VNode | null;
   /** The source URL of the image (optional) */
@@ -103,7 +103,7 @@ interface RenderImageOptions {
  * Options passed to `renderInitials` function
  * @interface RenderInitialsOptions
  */
-interface RenderInitialsOptions {
+export interface RenderInitialsOptions {
   /** The default rendered initials text element */
   defaultInitials: VNode;
   /** The initials string (optional) */
