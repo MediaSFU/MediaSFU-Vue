@@ -8,6 +8,7 @@
     :create-media-s-f-u-room="createRoomOnMediaSFU"
     :join-media-s-f-u-room="joinRoomOnMediaSFU"
     :ui-overrides="uiOverrides"
+    :custom-component="customComponent"
   />
 </template>
 
@@ -88,7 +89,7 @@ const connectionScenario: ConnectionScenario = 'cloud';
 const selectedExperience: ExperienceKey = 'generic';
 
 const showPrebuiltUI = true; // ✅ Changed to true to show PreJoinPage
-// const enableFullCustomUI = false; // Reserved for custom workspace UI
+const enableFullCustomUI = false;
 const enableCardBuilders = true;
 const enableUICoreOverrides = true;
 const enableModalOverrides = true;
@@ -796,8 +797,7 @@ const preJoinRenderer = computed(() => {
   return PreJoinPage;
 });
 
-// Reserved for full custom UI - uncomment when needed
-// const customComponent = computed(() => (enableFullCustomUI ? CustomWorkspace : undefined));
+const customComponent = computed(() => (enableFullCustomUI ? CustomWorkspace : undefined));
 
 // Reactive state (reserved for future use) - uncomment when needed
 // const sourceParameters = ref<Record<string, unknown>>({});

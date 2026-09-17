@@ -475,7 +475,7 @@ const showWaveformState = ref(true);
 let checkAudioInterval: ReturnType<typeof setInterval> | null = null;
 
 const latestSubtitleParams = computed(() =>
-  props.parameters?.getUpdatedAllParams?.() as {
+  (props.parameters?.getCurrentParams?.() ?? props.parameters) as {
     showSubtitlesOnCards?: boolean;
     getLiveSubtitleForSpeaker?: (speakerId: string, speakerName?: string) => { text?: string } | null;
   } | undefined
@@ -525,7 +525,6 @@ const resetWaveform = () => {
 
 // Check audio levels interval
 checkAudioInterval = setInterval(() => {
-  const { getUpdatedAllParams } = props.parameters;
   const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
   const { audioDecibels, participants } = updatedParams;
 
@@ -561,7 +560,6 @@ watch(
 
 const toggleAudio = async () => {
   if (!props.participant?.muted) {
-    const { getUpdatedAllParams } = props.parameters;
     const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
@@ -581,7 +579,6 @@ const toggleAudio = async () => {
 
 const toggleVideo = async () => {
   if (props.participant?.videoOn) {
-    const { getUpdatedAllParams } = props.parameters;
     const updatedParams = (props.parameters.getCurrentParams?.() ?? props.parameters);
     await controlMedia({
       participantId: props.participant.id || '',
