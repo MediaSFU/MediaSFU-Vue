@@ -151,6 +151,12 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import SelfieSegmentationModule from '@mediapipe/selfie_segmentation'
 import type { SelfieSegmentation as SelfieSegmentationInstance } from '@mediapipe/selfie_segmentation'
+import {
+  compositeVirtualBackgroundFrame,
+  DEFAULT_BACKGROUND_BLUR_PIXELS,
+  isVirtualBackgroundBlur,
+  VIRTUAL_BACKGROUND_BLUR,
+} from 'mediasfu-shared'
 import type { BackgroundModalProps } from '../../types/background'
 
 const { SelfieSegmentation } = SelfieSegmentationModule
@@ -450,6 +456,37 @@ const renderDefaultImages = () => {
     container.appendChild(img)
   })
 
+  const blurBackground = document.createElement('div')
+  blurBackground.classList.add('img-thumbnail', 'm-1', 'd-flex', 'align-items-center', 'justify-content-center')
+  blurBackground.setAttribute('role', 'button')
+  blurBackground.setAttribute('aria-label', 'Blur background')
+  blurBackground.style.width = '68px'
+  blurBackground.style.minHeight = '52px'
+  blurBackground.style.cursor = 'pointer'
+  blurBackground.style.background = 'linear-gradient(135deg, rgba(96,165,250,.45), rgba(15,23,42,.92))'
+  blurBackground.style.border = '1px solid rgba(148, 163, 184, 0.28)'
+  blurBackground.style.borderRadius = '10px'
+  blurBackground.innerHTML = '<span style="color:#e2e8f0; font-weight:600;">Blur</span>'
+  blurBackground.addEventListener('click', () => {
+    selectedImage.value = VIRTUAL_BACKGROUND_BLUR
+    customImage.value = ''
+    props.parameters.updateSelectedImage?.(VIRTUAL_BACKGROUND_BLUR)
+    props.parameters.updateCustomImage?.('')
+    clearCanvas()
+    const canvas = backgroundCanvasRef.value
+    const context = canvas?.getContext('2d')
+    if (canvas && context) {
+      context.fillStyle = '#1e293b'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      context.fillStyle = '#e2e8f0'
+      context.font = '600 26px Arial'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText('Blur', canvas.width / 2, canvas.height / 2)
+    }
+  })
+  container.appendChild(blurBackground)
+
   const noBackground = document.createElement('div')
   noBackground.classList.add('img-thumbnail', 'm-1', 'd-flex', 'align-items-center', 'justify-content-center')
   noBackground.style.width = '68px'
@@ -617,11 +654,12 @@ const preloadModel = async () => {
 const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   const refVideo = captureVideoRef.value
   const previewVideo = videoPreviewRef.value
+  const useBlur = isVirtualBackgroundBlur(selectedImage.value)
   const virtualImage = new Image()
   virtualImage.crossOrigin = 'anonymous'
-  virtualImage.src = selectedImage.value || ''
+  virtualImage.src = useBlur ? '' : (selectedImage.value || '')
 
-  if (doSegmentation && selectedImage.value) {
+  if (doSegmentation && selectedImage.value && !useBlur) {
     await new Promise<void>((resolve) => {
       if (virtualImage.complete && virtualImage.naturalWidth > 0) {
         resolve()
@@ -665,29 +703,19 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
         mediaCanvas &&
         mediaCanvas.width > 0 &&
         mediaCanvas.height > 0 &&
-        virtualImage &&
-        virtualImage.width > 0 &&
-        virtualImage.height > 0
+        (useBlur || (virtualImage && virtualImage.width > 0 && virtualImage.height > 0))
       ) {
-        ctx?.save()
-        ctx?.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height)
-        if (ctx) ctx.globalCompositeOperation = 'source-over'
-        ctx?.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height)
-
         if (ctx) {
-          ctx.globalCompositeOperation = 'source-in'
-          ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height)
-
-          ctx.globalCompositeOperation = 'destination-over'
-          const pattern = ctx.createPattern(virtualImage, repeatMode)
-          if (pattern) {
-            ctx.fillStyle = pattern
-          } else {
-            ctx.fillStyle = ''
-          }
-          ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height)
-
-          ctx.restore()
+          compositeVirtualBackgroundFrame({
+            ctx,
+            segmentationMask: results.segmentationMask,
+            sourceImage: results.image,
+            backgroundImage: useBlur ? null : virtualImage,
+            width: mediaCanvas.width,
+            height: mediaCanvas.height,
+            repeatPattern: repeatMode,
+            blurFallbackPixels: useBlur ? DEFAULT_BACKGROUND_BLUR_PIXELS : 0,
+          })
           markFirstFrameRendered()
         }
       }
@@ -888,7 +916,7 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   }
 
   try {
-    if (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height) {
+    if (!useBlur && (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height)) {
       repeatMode = 'repeat'
     }
   } catch {
@@ -1094,8 +1122,10 @@ watch(
         }
       }
       renderDefaultImages()
-      if (selectedImage.value) {
+      if (selectedImage.value && !isVirtualBackgroundBlur(selectedImage.value)) {
         await loadImageToCanvas(selectedImage.value, selectedImage.value)
+      } else if (isVirtualBackgroundBlur(selectedImage.value)) {
+        renderDefaultImages()
       } else {
         clearCanvas()
       }

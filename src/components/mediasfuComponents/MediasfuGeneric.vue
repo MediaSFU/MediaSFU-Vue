@@ -1974,14 +1974,6 @@ const mobileSidebarWidth = computed(() => {
   return Math.min(Math.max(preferredWidth, 280), Math.min(windowWidth.value, 400));
 });
 
-const mainScreenWidthFraction = computed(() => {
-  if (!shouldUseSidebar.value || windowWidth.value <= 0) {
-    return 1;
-  }
-
-  return Math.max(0.35, (windowWidth.value - sidebarWidth.value) / windowWidth.value);
-});
-
 const mainAspectContainerProps = computed<HTMLAttributes>(() => ({
   style: {
     display: 'flex',

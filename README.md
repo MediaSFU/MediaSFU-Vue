@@ -326,6 +326,20 @@ camera media from `useMediasfuHeadless().localVideo`; it resolves the active
 processed/virtual stream before the raw camera, so self-view matches the stream
 published to everyone else.
 
+The classic and modern background modals include **Blur** alongside image
+backgrounds. Fully custom web UIs can use the same room lifecycle directly:
+
+```ts
+import { applyBackgroundBlur, clearVirtualBackground } from 'mediasfu-shared';
+
+await applyBackgroundBlur({ parameters: latestRoomParameters, blurPixels: 16 });
+await clearVirtualBackground({ parameters: latestRoomParameters });
+```
+
+Turn the camera on before applying an effect. Keep the parameter publication
+current and render the SDK-resolved local stream; do not build a second canvas
+pipeline or select the raw camera stream yourself.
+
 Reuse `ModernBreakoutRoomsModal` with the same live room bag when you want the
 built-in planner. Save assignments before Start and show action errors in your
 page. Filtering tiles is not a breakout transition: the SDK must update room
@@ -369,9 +383,6 @@ Hosts can choose **Leave room** or **End for everyone**. **Leave room** keeps th
 
 ## Working examples
 
-- [Familiar Calls](https://github.com/MediaSFU/mediasfu-familiar-calls) — chat-style audio and video calling with incoming-call accept/decline; includes a Vue app and one shared backend.
-- [Live Auction](https://github.com/MediaSFU/mediasfu-live-auction) — host and bidder views, timed lots, and live media; includes a Vue app.
-- [Watch Together](https://github.com/MediaSFU/mediasfu-watch-together) — a watch party with a realtime conversation floor and HLS audience; includes a Vue app.
 - [MediaSFU QuickStart Apps](https://github.com/MediaSFU/MediaSFU-QuickStart-Apps) — runnable Cloud, MediaSFU Open, custom-prejoin, backend-proxy, and custom-UI examples across SDKs.
 - [SpacesTek Initial](https://github.com/MediaSFU/SpacesTekInitial) → [Final](https://github.com/MediaSFU/SpacesTekFinal) → [Advanced](https://github.com/MediaSFU/SpacesTekAdvanced) — a staged path from a starter room to a product-owned Spaces-style experience.
 - [MediaSFU Agents](https://github.com/MediaSFU/Agents) — multimodal voice/vision agent starters across supported frameworks.

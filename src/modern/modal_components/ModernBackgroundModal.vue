@@ -37,6 +37,12 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import SelfieSegmentationModule from '@mediapipe/selfie_segmentation';
 import type { SelfieSegmentation as SelfieSegmentationInstance } from '@mediapipe/selfie_segmentation';
+import {
+  compositeVirtualBackgroundFrame,
+  DEFAULT_BACKGROUND_BLUR_PIXELS,
+  isVirtualBackgroundBlur,
+  VIRTUAL_BACKGROUND_BLUR,
+} from 'mediasfu-shared';
 import type { BackgroundModalProps, BackgroundModalPosition } from '../../types/background';
 import { mergeAttrObjects, mergeStyleObjects } from '../display_components/styleUtils';
 
@@ -316,6 +322,33 @@ const handleNoBackground = () => {
   hideLoading();
 };
 
+const handleBlurBackground = () => {
+  selectedImage.value = VIRTUAL_BACKGROUND_BLUR;
+  customImage.value = '';
+  props.parameters.updateSelectedImage?.(VIRTUAL_BACKGROUND_BLUR);
+  props.parameters.updateCustomImage?.('');
+
+  const canvas = backgroundCanvasRef.value;
+  const ctx = canvas?.getContext('2d');
+  if (canvas && ctx) {
+    canvas.width = 640;
+    canvas.height = 360;
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#334155');
+    gradient.addColorStop(1, '#0f172a');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '600 26px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Blur', canvas.width / 2, canvas.height / 2);
+  }
+  showPreviewVideo.value = false;
+  showBackgroundCanvas.value = true;
+  resetActionButtons();
+};
+
 const chooseResolutionSource = (entry: (typeof defaultBackgroundEntries)[number]) => {
   const parameters = getCurrentParameters();
   if (parameters.targetResolution === 'fhd' || parameters.targetResolution === 'qhd') {
@@ -458,11 +491,12 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     return;
   }
 
+  const useBlur = isVirtualBackgroundBlur(selectedImage.value);
   const virtualImage = new Image();
   virtualImage.crossOrigin = 'anonymous';
-  virtualImage.src = selectedImage.value || '';
+  virtualImage.src = useBlur ? '' : (selectedImage.value || '');
 
-  if (doSegmentation && selectedImage.value) {
+  if (doSegmentation && selectedImage.value && !useBlur) {
     await new Promise<void>((resolve) => {
       if (virtualImage.complete && virtualImage.naturalWidth > 0) {
         resolve();
@@ -502,28 +536,21 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
         !ctx ||
         mediaCanvas.width <= 0 ||
         mediaCanvas.height <= 0 ||
-        virtualImage.width <= 0 ||
-        virtualImage.height <= 0
+        (!useBlur && (virtualImage.width <= 0 || virtualImage.height <= 0))
       ) {
         return;
       }
 
-      ctx.save();
-      ctx.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.drawImage(results.segmentationMask, 0, 0, mediaCanvas.width, mediaCanvas.height);
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.drawImage(results.image, 0, 0, mediaCanvas.width, mediaCanvas.height);
-
-      ctx.globalCompositeOperation = 'destination-over';
-
-      const pattern = ctx.createPattern(virtualImage, repeatMode);
-      if (pattern) {
-        ctx.fillStyle = pattern;
-      }
-      ctx.fillRect(0, 0, mediaCanvas.width, mediaCanvas.height);
-
-      ctx.restore();
+      compositeVirtualBackgroundFrame({
+        ctx,
+        segmentationMask: results.segmentationMask,
+        sourceImage: results.image,
+        backgroundImage: useBlur ? null : virtualImage,
+        width: mediaCanvas.width,
+        height: mediaCanvas.height,
+        repeatPattern: repeatMode,
+        blurFallbackPixels: useBlur ? DEFAULT_BACKGROUND_BLUR_PIXELS : 0,
+      });
       markFirstFrameRendered();
     } catch (error) {
       console.log('Error applying background:', error);
@@ -707,7 +734,7 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   }
 
   try {
-    if (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height) {
+    if (!useBlur && (virtualImage.width < mediaCanvas.width || virtualImage.height < mediaCanvas.height)) {
       repeatMode = 'repeat';
     }
   } catch {
@@ -1044,8 +1071,10 @@ watch(
         }
       }
 
-      if (selectedImage.value) {
+      if (selectedImage.value && !isVirtualBackgroundBlur(selectedImage.value)) {
         await loadImageToCanvas(selectedImage.value, selectedImage.value);
+      } else if (isVirtualBackgroundBlur(selectedImage.value)) {
+        handleBlurBackground();
       } else {
         clearCanvas();
       }
@@ -1703,6 +1732,30 @@ const createThumbnailNodes = () => {
       ],
     );
   });
+
+  nodes.push(
+    h(
+      'button',
+      {
+        type: 'button',
+        'aria-label': 'Blur background',
+        style: thumbnailButtonStyle(isVirtualBackgroundBlur(selectedImage.value), true),
+        onClick: handleBlurBackground,
+      },
+      h(
+        'span',
+        {
+          style: {
+            display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%',
+            fontFamily: 'var(--ms-modern-font-family)', fontSize: '0.85rem', fontWeight: 600,
+            color: 'var(--ms-modern-text-primary)', backdropFilter: 'blur(10px)',
+            background: 'linear-gradient(135deg, rgba(96,165,250,.35), rgba(15,23,42,.8))',
+          } satisfies CSSProperties,
+        },
+        'Blur',
+      ),
+    ),
+  );
 
   nodes.push(
     h(
