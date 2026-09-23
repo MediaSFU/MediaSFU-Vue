@@ -7,6 +7,7 @@ import VideoCard from '../components/displayComponents/VideoCard.vue';
 import AudioCard from '../components/displayComponents/AudioCard.vue';
 import MiniCard from '../components/displayComponents/MiniCard.vue';
 import type { RenderableComponent } from '../types/renderable-component';
+import { resolveSidePanelForceFullDisplay } from 'mediasfu-shared';
 import type { 
   Participant, 
   Stream, 
@@ -29,6 +30,8 @@ export interface AddVideosGridParameters extends UpdateMiniCardsGridParameters {
   keepBackground: boolean;
   virtualStream: MediaStream | null;
   forceFullDisplay: boolean;
+  shared?: boolean;
+  shareScreenStarted?: boolean;
   otherGridStreams: RenderableComponent[][];
   updateOtherGridStreams: (otherGridStreams: RenderableComponent[][]) => void;
   updateMiniCardsGrid: (options: {
@@ -98,6 +101,8 @@ export async function addVideosGrid({
     keepBackground,
     virtualStream,
     forceFullDisplay,
+    shared,
+    shareScreenStarted,
     otherGridStreams,
     updateOtherGridStreams,
     updateMiniCardsGrid,
@@ -126,6 +131,11 @@ export async function addVideosGrid({
   let remoteProducerId: string = '';
 
   numtoadd = mainGridStreams.length;
+  const sidePanelForceFullDisplay = resolveSidePanelForceFullDisplay({
+    forceFullDisplay,
+    screenShareActive: !!(shared || shareScreenStarted),
+    itemCount: numtoadd + (removeAltGrid ? 0 : altGridStreams.length),
+  });
 
   if (removeAltGrid) {
     updateAddAltGrid(false);
@@ -281,7 +291,7 @@ export async function addVideosGrid({
                   videoStream: videoParticipant.stream || new MediaStream(),
                   remoteProducerId: videoParticipant.stream?.id || '',
                   eventType: eventType,
-                  forceFullDisplay: eventType === 'webinar' ? false : forceFullDisplay,
+                  forceFullDisplay: eventType === 'webinar' ? false : sidePanelForceFullDisplay,
                   customStyle: {
                     border: themedBorder,
                   },
@@ -326,7 +336,7 @@ export async function addVideosGrid({
                   videoStream: (participant as Stream).stream || new MediaStream(),
                   remoteProducerId: remoteProducerId || '',
                   eventType: eventType,
-                  forceFullDisplay: forceFullDisplay,
+                  forceFullDisplay: sidePanelForceFullDisplay,
                   customStyle: {
                     border: themedBorder,
                   },
@@ -484,7 +494,7 @@ export async function addVideosGrid({
                   videoStream: (participant as Stream).stream || new MediaStream(),
                   remoteProducerId: remoteProducerId || '',
                   eventType: eventType,
-                  forceFullDisplay: forceFullDisplay,
+                  forceFullDisplay: sidePanelForceFullDisplay,
                   customStyle: {
                     border: themedBorder,
                   },

@@ -156,6 +156,7 @@ import {
   DEFAULT_BACKGROUND_BLUR_PIXELS,
   isVirtualBackgroundBlur,
   VIRTUAL_BACKGROUND_BLUR,
+  startVirtualBackgroundFrameLoop,
 } from 'mediasfu-shared'
 import type { BackgroundModalProps } from '../../types/background'
 
@@ -167,6 +168,7 @@ interface SegmentationResults {
 }
 
 const props = withDefaults(defineProps<BackgroundModalProps>(), {
+  keepProcessingWhenHidden: true,
   position: 'topLeft',
   backgroundColor: '#f5f5f5',
   title: 'Background Settings',
@@ -312,7 +314,7 @@ const applyBackgroundButtonRef = ref<HTMLButtonElement | null>(null)
 const saveBackgroundButtonRef = ref<HTMLButtonElement | null>(null)
 const mainCanvasRef = ref<HTMLCanvasElement | null>(null)
 const previewLoopVersion = ref(0)
-const previewAnimationFrameId = ref<number | null>(null)
+let stopPreviewFrameLoop: (() => void) | null = null
 const previewCaptureTimeoutId = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const clonedStream = ref<MediaStream | null>(null)
@@ -354,10 +356,8 @@ const waitForInteractiveView = async () => {
 
 const stopPreviewProcessing = () => {
   previewLoopVersion.value++
-  if (previewAnimationFrameId.value !== null) {
-    cancelAnimationFrame(previewAnimationFrameId.value)
-    previewAnimationFrameId.value = null
-  }
+  stopPreviewFrameLoop?.()
+  stopPreviewFrameLoop = null
   if (previewCaptureTimeoutId.value !== null) {
     clearTimeout(previewCaptureTimeoutId.value)
     previewCaptureTimeoutId.value = null
@@ -746,6 +746,7 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   props.parameters.updatePrevKeepBackground?.(keepBackground.value)
 
   if (!doSegmentation) {
+    stopPreviewProcessing()
     processedStream.value?.getVideoTracks().forEach((track: MediaStreamTrack) => track.stop())
     processedStream.value = null
     props.parameters.updateProcessedStream?.(null)
@@ -759,30 +760,21 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     const loopVersion = previewLoopVersion.value
     let startedProcessing = false
 
-    const processFrame = () => {
-      if (
-        loopVersion !== previewLoopVersion.value ||
-        !selfieSegmentation.value ||
-        pauseSegmentation.value ||
-        !videoElement ||
-        videoElement.videoWidth === 0 ||
-        videoElement.videoHeight === 0
-      ) {
-        return
-      }
-
-      try {
-        void selfieSegmentation.value.send({ image: videoElement }).catch(() => undefined)
-      } catch {
-        // Handle send error silently
-      }
-      previewAnimationFrameId.value = requestAnimationFrame(processFrame)
-    }
-
     const startProcessing = () => {
       if (startedProcessing) return
       startedProcessing = true
-      processFrame()
+      const segmentation = selfieSegmentation.value
+      if (!segmentation) return
+      stopPreviewFrameLoop = startVirtualBackgroundFrameLoop({
+        owner: segmentation,
+        keepProcessingWhenHidden: props.keepProcessingWhenHidden,
+        shouldContinue: () => loopVersion === previewLoopVersion.value &&
+          !pauseSegmentation.value &&
+          (videoElement.srcObject as MediaStream | null)?.getVideoTracks?.()[0]?.readyState === 'live',
+        processFrame: () => videoElement.videoWidth > 0 && videoElement.videoHeight > 0
+          ? segmentation.send({ image: videoElement })
+          : undefined,
+      })
     }
 
     videoElement.onloadeddata = startProcessing

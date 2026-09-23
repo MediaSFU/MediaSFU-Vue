@@ -1,6 +1,6 @@
 {
   "name": "mediasfu-vue",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": false,
   "type": "module",
   "publishConfig": {
@@ -101,7 +101,7 @@
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
-    "mediasfu-shared": "^1.2.3",
+    "mediasfu-shared": "^1.2.4",
     "universal-cookie": "^8.0.1"
   },
   "devDependencies": {

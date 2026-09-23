@@ -42,6 +42,7 @@ import {
   DEFAULT_BACKGROUND_BLUR_PIXELS,
   isVirtualBackgroundBlur,
   VIRTUAL_BACKGROUND_BLUR,
+  startVirtualBackgroundFrameLoop,
 } from 'mediasfu-shared';
 import type { BackgroundModalProps, BackgroundModalPosition } from '../../types/background';
 import { mergeAttrObjects, mergeStyleObjects } from '../display_components/styleUtils';
@@ -49,6 +50,7 @@ import { mergeAttrObjects, mergeStyleObjects } from '../display_components/style
 const { SelfieSegmentation } = SelfieSegmentationModule;
 
 const props = withDefaults(defineProps<BackgroundModalProps>(), {
+  keepProcessingWhenHidden: true,
   renderMode: 'modal',
   position: 'topLeft',
   backgroundColor: undefined,
@@ -127,7 +129,7 @@ const applyBackgroundButtonRef = ref<HTMLButtonElement | null>(null);
 const saveBackgroundButtonRef = ref<HTMLButtonElement | null>(null);
 const mainCanvasRef = ref<HTMLCanvasElement | null>(null);
 const previewLoopVersion = ref(0);
-const previewAnimationFrameId = ref<number | null>(null);
+let stopPreviewFrameLoop: (() => void) | null = null;
 const previewCaptureTimeoutId = ref<ReturnType<typeof setTimeout> | null>(null);
 const uploadFileName = ref('No file selected');
 const isAutoApplyBusy = ref(false);
@@ -579,6 +581,7 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
   props.parameters.updatePrevKeepBackground?.(keepBackground.value);
 
   if (!doSegmentation) {
+    stopPreviewProcessing();
     processedStream.value?.getVideoTracks().forEach((track) => track.stop());
     processedStream.value = null;
     props.parameters.updateProcessedStream?.(null);
@@ -594,29 +597,21 @@ const selfieSegmentationPreview = async (doSegmentation: boolean) => {
     const loopVersion = previewLoopVersion.value;
     let startedProcessing = false;
 
-    const processFrame = () => {
-      if (
-        loopVersion !== previewLoopVersion.value ||
-        !selfieSegmentation.value ||
-        pauseSegmentation.value ||
-        videoElement.videoWidth === 0 ||
-        videoElement.videoHeight === 0
-      ) {
-        return;
-      }
-
-      try {
-        void selfieSegmentation.value.send({ image: videoElement }).catch(() => undefined);
-      } catch {
-        // Handle send error silently
-      }
-      previewAnimationFrameId.value = requestAnimationFrame(processFrame);
-    };
-
     const startProcessing = () => {
       if (startedProcessing) return;
       startedProcessing = true;
-      processFrame();
+      const segmentation = selfieSegmentation.value;
+      if (!segmentation) return;
+      stopPreviewFrameLoop = startVirtualBackgroundFrameLoop({
+        owner: segmentation,
+        keepProcessingWhenHidden: props.keepProcessingWhenHidden,
+        shouldContinue: () => loopVersion === previewLoopVersion.value &&
+          !pauseSegmentation.value &&
+          (videoElement.srcObject as MediaStream | null)?.getVideoTracks?.()[0]?.readyState === 'live',
+        processFrame: () => videoElement.videoWidth > 0 && videoElement.videoHeight > 0
+          ? segmentation.send({ image: videoElement })
+          : undefined,
+      });
     };
 
     videoElement.onloadeddata = startProcessing;
@@ -813,10 +808,8 @@ const waitForInteractiveView = async () => {
 
 const stopPreviewProcessing = () => {
   previewLoopVersion.value++;
-  if (previewAnimationFrameId.value !== null) {
-    cancelAnimationFrame(previewAnimationFrameId.value);
-    previewAnimationFrameId.value = null;
-  }
+  stopPreviewFrameLoop?.();
+  stopPreviewFrameLoop = null;
   if (previewCaptureTimeoutId.value !== null) {
     clearTimeout(previewCaptureTimeoutId.value);
     previewCaptureTimeoutId.value = null;
@@ -1215,7 +1208,7 @@ const defaultHeaderProps = computed<HTMLAttributes>(() => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '10px',
+    gap: '8px',
     padding: '12px 16px 10px',
     borderBottom: '1px solid var(--ms-modern-panel-border)',
     background: panelGradientBackground,
@@ -1484,15 +1477,16 @@ const buttonsWrapperNodeProps = computed<HTMLAttributes>(() =>
 const defaultApplyButtonProps = computed<ButtonHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__apply',
   style: {
-    minHeight: '36px',
-    minWidth: '136px',
+    minHeight: '34px',
+    minWidth: '110px',
     borderRadius: '9999px',
     border: '1px solid var(--ms-modern-panel-border)',
-    paddingInline: '16px',
+    paddingInline: '14px',
+    fontSize: '13px',
     background: 'var(--ms-modern-field-background)',
     color: 'var(--ms-modern-text-primary)',
     fontFamily: 'var(--ms-modern-font-family)',
-    fontWeight: 700,
+    fontWeight: 600,
     boxShadow: 'var(--ms-modern-shadow-soft)',
     cursor: 'pointer',
   } satisfies CSSProperties,
@@ -1512,16 +1506,17 @@ const applyButtonNodeProps = computed<ButtonHTMLAttributes>(() => {
 const defaultSaveButtonProps = computed<ButtonHTMLAttributes>(() => ({
   class: 'ms-modern-background-modal__save',
   style: {
-    minHeight: '36px',
-    minWidth: '136px',
+    minHeight: '34px',
+    minWidth: '110px',
     borderRadius: '9999px',
     border: 'none',
-    paddingInline: '16px',
+    paddingInline: '14px',
+    fontSize: '13px',
     background:
       'linear-gradient(135deg, var(--ms-modern-brand-primary) 0%, var(--ms-modern-brand-secondary) 55%, var(--ms-modern-accent) 100%)',
     color: '#ffffff',
     fontFamily: 'var(--ms-modern-font-family)',
-    fontWeight: 700,
+    fontWeight: 600,
     boxShadow: 'var(--ms-modern-shadow-soft)',
     cursor: 'pointer',
   } satisfies CSSProperties,

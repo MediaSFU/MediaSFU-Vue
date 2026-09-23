@@ -158,6 +158,8 @@ export interface BackgroundModalProps {
   isVisible: boolean
   onClose: () => void
   parameters: BackgroundModalParameters
+  /** Best-effort processing in hidden browser tabs; defaults to true. */
+  keepProcessingWhenHidden?: boolean
   renderMode?: 'modal' | 'sidebar' | 'inline'
   position?: BackgroundModalPosition
   backgroundColor?: string
